@@ -1,0 +1,8 @@
+{
+  "name": "garv-store-dash",
+  "version": "1.0.0",
+  "description": "GARV Store Performance Dashboard — raw metrics, multi-period, no lead minimum",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}

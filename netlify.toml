@@ -1,0 +1,42 @@
+[build]
+  command   = "echo 'No build step'"
+  publish   = "public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# ─── API routes (more-specific paths FIRST) ──────────────────
+[[redirects]]
+  from   = "/api/upload"
+  to     = "/.netlify/functions/upload"
+  status = 200
+
+[[redirects]]
+  from   = "/api/store/:id/period/:period/rows"
+  to     = "/.netlify/functions/period-rows"
+  status = 200
+
+[[redirects]]
+  from   = "/api/store/:id/period/:period"
+  to     = "/.netlify/functions/store-period"
+  status = 200
+
+[[redirects]]
+  from   = "/api/store/:id/periods"
+  to     = "/.netlify/functions/store-periods"
+  status = 200
+
+# ─── CORS headers on all /api/* ──────────────────────────────
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Access-Control-Allow-Origin  = "*"
+    Access-Control-Allow-Methods = "GET, POST, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type"
+
+# ─── SPA fallback ────────────────────────────────────────────
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200
