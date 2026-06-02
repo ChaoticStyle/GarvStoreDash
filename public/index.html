@@ -934,6 +934,14 @@ function getAllNetworkPeriods(){
 }
 function getNetPeriod(){const all=getAllNetworkPeriods();if(!all.length)return null;return(netPeriod&&all.includes(netPeriod))?netPeriod:all[0];}
 function setNetPeriod(p){netPeriod=p;renderNetworkContent();}
+function getNetworkTotals(period){
+  let leads=0,valid=0,del=0,count=0;
+  STORES.filter(s=>!s.isAirstream).forEach(s=>{
+    const snap=getPeriodSnapshot(s.id,period);
+    if(snap){leads+=snap.totals.total_leads||0;valid+=snap.totals.valid_leads||0;del+=snap.totals.delivered||0;count++;}
+  });
+  return count>0?{total_leads:leads,valid_leads:valid,delivered:del,conv_pct:valid?del/valid:0}:null;
+}
 
 function buildNetworkPage(pg){
   const allPeriods=getAllNetworkPeriods();
@@ -983,7 +991,25 @@ function networkCardsHTML(np){
   const asSnap=getPeriodSnapshot('airstream',np);
   const asCard=asSnap?`<div class="net-card has-data" onclick="goStore('airstream')"><div class="net-card-name">Airstream</div><div class="net-card-period">BRAND · ${periodLabel(np)}</div><div class="net-card-metrics"><div><div class="net-metric-v b">${asSnap.totals.total_leads}</div><div class="net-metric-l">All Leads</div></div><div><div class="net-metric-v">${asSnap.totals.valid_leads}</div><div class="net-metric-l">Valid</div></div><div><div class="net-metric-v g">${asSnap.totals.delivered}</div><div class="net-metric-l">Deliveries</div></div><div><div class="net-metric-v ${convCls(asSnap.totals.conv_pct)}">${asSnap.totals.valid_leads?pct(asSnap.totals.conv_pct):'—'}</div><div class="net-metric-l">Cov%</div></div></div></div>`:`<div class="net-card no-data"><div class="net-card-name">Airstream</div><div class="net-card-period">BRAND · No data for ${periodLabel(np)}</div></div>`;
 
-  return totalsBar+`<div class="net-grid">${cards}</div><div class="net-as-sep">Airstream Brand</div><div class="net-grid">${asCard}</div>`;
+  // Network MoM cards — consecutive pairs across all available periods
+  const allPeriodsAsc=[...getAllNetworkPeriods()].reverse();
+  let netMomCards='';
+  if(allPeriodsAsc.length>=2){
+    const ar=v=>v>0?'↑':v<0?'↓':'→';
+    const cl=v=>v>0?'delta-pos':v<0?'delta-neg':'delta-eq';
+    const sg=v=>v>0?'+':'';
+    for(let i=0;i<allPeriodsAsc.length-1;i++){
+      const pa=allPeriodsAsc[i],pb=allPeriodsAsc[i+1];
+      const ta=getNetworkTotals(pa),tb=getNetworkTotals(pb);
+      if(!ta||!tb){netMomCards+=`<div class="mom-card"><div class="mom-period">${periodLabel(pa)} → ${periodLabel(pb)}</div><div style="color:var(--t3);font-size:10px;padding-top:4px">No data</div></div>`;continue;}
+      const dL=tb.total_leads-ta.total_leads,dD=tb.delivered-ta.delivered;
+      const dC=(ta.valid_leads&&tb.valid_leads)?(tb.conv_pct-ta.conv_pct)*100:null;
+      netMomCards+=`<div class="mom-card"><div class="mom-period">${periodLabel(pa)} → ${periodLabel(pb)}</div><div class="mom-metric"><span class="mom-lbl">Leads</span><span class="mom-val ${cl(dL)}">${sg(dL)}${dL} ${ar(dL)}</span></div><div class="mom-metric"><span class="mom-lbl">Delivered</span><span class="mom-val ${cl(dD)}">${sg(dD)}${dD} ${ar(dD)}</span></div><div class="mom-metric"><span class="mom-lbl">Conv %</span><span class="mom-val ${dC!==null?cl(dC):'delta-eq'}">${dC!==null?sg(dC)+dC.toFixed(1)+'% '+ar(dC):'—'}</span></div></div>`;
+    }
+  }
+  const netMomSection=netMomCards?`<div style="margin-top:18px;padding:0 0 4px"><div class="mom-hd">&#9650; Network Month-over-Month</div><div class="mom-strip">${netMomCards}</div></div>`:'';
+
+  return totalsBar+`<div class="net-grid">${cards}</div><div class="net-as-sep">Airstream Brand</div><div class="net-grid">${asCard}</div>${netMomSection}`;
 }
 
 /* ═══════════════════════════════════════════════════════════════
