@@ -6,7 +6,6 @@
 import { getStore } from '@netlify/blobs';
 
 const BLOB_STORE   = 'sdash';
-const MAX_PERIODS  = 24;
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
@@ -77,12 +76,11 @@ export default async (req) => {
     }
   }
 
-  // 3. Update the period index (lightweight list, no full reps array)
+  // 3. Write a lightweight metadata blob for this period.
+  //    Each period gets its own key — no read-modify-write, no race condition.
+  //    store-periods.mjs lists meta_storeId_* to build the index.
   if (snapshot) {
-    let index = [];
-    try { index = (await store.get(`index_${storeId}`, { type: 'json' })) || []; } catch {}
-
-    const meta = {
+    await store.setJSON(`meta_${storeId}_${period}`, {
       period,
       label:      label || period,
       fileName:   fileName || '',
@@ -90,16 +88,7 @@ export default async (req) => {
       rep_count:  snapshot.totals?.rep_count  || 0,
       delivered:  snapshot.totals?.delivered  || 0,
       conv_pct:   snapshot.totals?.conv_pct   || 0,
-    };
-
-    const i = index.findIndex(p => p.period === period);
-    if (i >= 0) index[i] = meta;
-    else        index.unshift(meta);
-
-    index.sort((a, b) => b.period.localeCompare(a.period)); // newest first
-    if (index.length > MAX_PERIODS) index = index.slice(0, MAX_PERIODS);
-
-    await store.setJSON(`index_${storeId}`, index);
+    });
   }
 
   return Response.json({ ok: true, storeId, period }, { headers: CORS });
