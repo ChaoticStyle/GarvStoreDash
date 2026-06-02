@@ -1,5 +1,7 @@
 // GET /api/store/:id/periods
 // Returns the period index (lightweight metadata list) for one store.
+// Rebuilt from individual meta_storeId_period blobs — no shared index blob,
+// so concurrent uploads cannot race and lose entries.
 
 import { getStore } from '@netlify/blobs';
 
@@ -18,9 +20,26 @@ export default async (req) => {
 
   if (!id) return Response.json({ error: 'Missing store id' }, { status: 400, headers: CORS });
 
+  const store = getStore('sdash');
+
   try {
-    const index = (await getStore('sdash').get(`index_${id}`, { type: 'json' })) || [];
-    return Response.json(index, { headers: CORS });
+    // List all per-period metadata blobs for this store
+    const { blobs } = await store.list({ prefix: `meta_${id}_` });
+
+    if (blobs && blobs.length > 0) {
+      // Fetch all meta blobs in parallel — each is tiny (just metadata, no reps array)
+      const metas = await Promise.all(
+        blobs.map(b => store.get(b.key, { type: 'json' }).catch(() => null))
+      );
+      const index = metas
+        .filter(Boolean)
+        .sort((a, b) => b.period.localeCompare(a.period));
+      return Response.json(index, { headers: CORS });
+    }
+
+    // Fallback: legacy index blob (for stores uploaded before this fix)
+    const legacy = (await store.get(`index_${id}`, { type: 'json' })) || [];
+    return Response.json(legacy, { headers: CORS });
   } catch {
     return Response.json([], { headers: CORS });
   }
