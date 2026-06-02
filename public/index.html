@@ -726,7 +726,32 @@ function sortedReps(reps){const dir=sortDir==='desc'?-1:1;return[...reps].sort((
    LIVE DATA
 ═══════════════════════════════════════════════════════════════ */
 function hasRowSource(id,period){return!!_sessionRows[`${id}_${period}`]||!!getCachedRows(id,period);}
+function mergeSnapshotData(snaps){
+  const repMap={};
+  snaps.forEach(snap=>{
+    if(!snap)return;
+    snap.reps.forEach(r=>{
+      if(!repMap[r.name])repMap[r.name]={name:r.name,total_leads:0,bad_leads:0,valid_leads:0,visits:0,write_ups:0,delivered:0};
+      const m=repMap[r.name];
+      m.total_leads+=r.total_leads||0;m.bad_leads+=r.bad_leads||0;m.valid_leads+=r.valid_leads||0;
+      m.visits+=r.visits||0;m.write_ups+=r.write_ups||0;m.delivered+=r.delivered||0;
+    });
+  });
+  const reps=Object.values(repMap).map(r=>({...r,
+    conv_pct:r.valid_leads?r.delivered/r.valid_leads:0,
+    vis_pct:r.valid_leads?r.visits/r.valid_leads:0,
+    wu_pct:r.visits?r.write_ups/r.visits:0}));
+  let tl=0,bl=0,vl=0,vi=0,wu=0,del=0;
+  reps.forEach(r=>{tl+=r.total_leads;bl+=r.bad_leads;vl+=r.valid_leads;vi+=r.visits;wu+=r.write_ups;del+=r.delivered;});
+  const totals={total_leads:tl,bad_leads:bl,valid_leads:vl,visits:vi,write_ups:wu,delivered:del,
+    conv_pct:vl?del/vl:0,vis_pct:vl?vi/vl:0,wu_pct:vi?wu/vi:0,rep_count:reps.length};
+  return{reps,totals};
+}
 function getLiveData(id,period){
+  if(period==='__all__'){
+    const snaps=getStorePeriods(id).map(p=>getPeriodSnapshot(id,p.period)).filter(Boolean);
+    return snaps.length?mergeSnapshotData(snaps):null;
+  }
   const filterActive=activeDR!=='all'||drFrom||drTo;
   if(filterActive){
     const sk=`${id}_${period}`;
@@ -777,6 +802,7 @@ function clearDR(){activeDR='all';drFrom='';drTo='';renderContent();}
 
 function changePeriod(period){
   setActivePeriod(curStore,period);activeDR='all';drFrom='';drTo='';
+  if(period==='__all__'){buildPage();return;}
   if(HAS_BACKEND&&!getCachedSnap(curStore,period)){
     const wrap=document.getElementById('content-wrap');
     if(wrap)wrap.innerHTML='<div style="padding:48px;text-align:center"><div class="spin" style="width:20px;height:20px;margin:auto"></div><div style="color:var(--t3);margin-top:12px;font-size:11px">Loading period data…</div></div>';
@@ -796,18 +822,21 @@ function buildPage(){
   const periods=getStorePeriods(curStore);
   if(!periods.length){pg.innerHTML=emptyHTML(s);return;}
   const activePeriod=getActivePeriod(curStore);
-  const snap=getPeriodSnapshot(curStore,activePeriod);
+  const isAllPeriods=activePeriod==='__all__';
+  const snap=isAllPeriods?null:getPeriodSnapshot(curStore,activePeriod);
   const rawDates=snap?snap._rawDates||[]:[];
   const minDate=rawDates.length?rawDates[0]:'';
   const maxDate=rawDates.length?rawDates[rawDates.length-1]:'';
-  const filterActive=activeDR!=='all'||drFrom||drTo;
+  const filterActive=!isAllPeriods&&(activeDR!=='all'||drFrom||drTo);
   const noRowSrc=filterActive&&!hasRowSource(curStore,activePeriod);
-  const perOptions=periods.map(p=>`<option value="${p.period}"${p.period===activePeriod?' selected':''}>${periodLabel(p.period)} · ${p.fileName||p.period}</option>`).join('');
+  const allOpt=`<option value="__all__"${isAllPeriods?' selected':''}>All Periods (${periods.length})</option>`;
+  const perOptions=allOpt+periods.map(p=>`<option value="${p.period}"${p.period===activePeriod?' selected':''}>${periodLabel(p.period)} · ${p.fileName||p.period}</option>`).join('');
   const presets=['all','mtd','last30','last7'];
   const pLabels={all:'All Data',mtd:'MTD',last30:'Last 30',last7:'Last 7'};
   const drBtns=presets.map(q=>`<button class="dr-btn${activeDR===q?' active':''}" data-dr="${q}" onclick="setDR('${q}')">${pLabels[q]}</button>`).join('');
   const views=[{k:'table',l:'Rep Table'},{k:'summary',l:'Summary'},{k:'compare',l:'Compare'}];
   const viewBtns=views.map(v=>`<button class="vp-btn${curView===v.k?' active':''}" data-view="${v.k}" onclick="setView('${v.k}')">${v.l}</button>`).join('');
+  const dateControls=isAllPeriods?'':`<div class="ctrl-sep"></div><span class="ctrl-lbl">Date</span>${drBtns}<div class="ctrl-sep"></div><div class="dr-dates"><input type="date" class="dr-input" id="dr-from" value="${drFrom}"${minDate?` min="${minDate}"`:''}${maxDate?` max="${maxDate}"`:''}  onchange="applyCustomRange()"><span class="dr-to">–</span><input type="date" class="dr-input" id="dr-to" value="${drTo}"${minDate?` min="${minDate}"`:''}${maxDate?` max="${maxDate}"`:''}  onchange="applyCustomRange()"></div>${filterActive?'<button class="dr-clear" onclick="clearDR()">× Clear</button>':''}${noRowSrc?'<span class="dr-warn">⚠ Re-upload to date filter</span>':''}`;
   pg.innerHTML=
     `<div class="ctx-bar">
       <div class="ctx-l">
@@ -823,16 +852,7 @@ function buildPage(){
     <div class="ctrl-bar">
       <span class="ctrl-lbl">Period</span>
       <select class="per-sel" onchange="changePeriod(this.value)">${perOptions}</select>
-      <div class="ctrl-sep"></div>
-      <span class="ctrl-lbl">Date</span>${drBtns}
-      <div class="ctrl-sep"></div>
-      <div class="dr-dates">
-        <input type="date" class="dr-input" id="dr-from" value="${drFrom}"${minDate?` min="${minDate}"`:''}${maxDate?` max="${maxDate}"`:''}  onchange="applyCustomRange()">
-        <span class="dr-to">–</span>
-        <input type="date" class="dr-input" id="dr-to" value="${drTo}"${minDate?` min="${minDate}"`:''}${maxDate?` max="${maxDate}"`:''}  onchange="applyCustomRange()">
-      </div>
-      ${filterActive?'<button class="dr-clear" onclick="clearDR()">× Clear</button>':''}
-      ${noRowSrc?'<span class="dr-warn">⚠ Re-upload to date filter</span>':''}
+      ${dateControls}
     </div>
     <div class="vwrap" id="content-wrap"></div>`;
   renderContent();
@@ -932,8 +952,8 @@ function getAllNetworkPeriods(){
   STORES.forEach(s=>getStorePeriods(s.id).forEach(p=>all.add(p.period)));
   return[...all].sort().reverse();
 }
-function getNetPeriod(){const all=getAllNetworkPeriods();if(!all.length)return null;return(netPeriod&&all.includes(netPeriod))?netPeriod:all[0];}
-function setNetPeriod(p){netPeriod=p;renderNetworkContent();}
+function getNetPeriod(){const all=getAllNetworkPeriods();if(!all.length)return null;if(netPeriod==='__all__')return'__all__';return(netPeriod&&all.includes(netPeriod))?netPeriod:all[0];}
+function setNetPeriod(p){netPeriod=p;const sel=document.querySelector('#page .per-sel');if(sel)sel.value=p;renderNetworkContent();}
 function getNetworkTotals(period){
   let leads=0,valid=0,del=0,count=0;
   STORES.filter(s=>!s.isAirstream).forEach(s=>{
@@ -947,7 +967,8 @@ function buildNetworkPage(pg){
   const allPeriods=getAllNetworkPeriods();
   const np=getNetPeriod();
   if(!allPeriods.length){pg.innerHTML=emptyHTML({name:'Network',id:'network',isAirstream:false});return;}
-  const perOptions=allPeriods.map(p=>`<option value="${p}"${p===np?' selected':''}>${periodLabel(p)}</option>`).join('');
+  const allOpt=`<option value="__all__"${np==='__all__'?' selected':''}>All Periods (${allPeriods.length})</option>`;
+  const perOptions=allOpt+allPeriods.map(p=>`<option value="${p}"${p===np?' selected':''}>${periodLabel(p)}</option>`).join('');
   pg.innerHTML=`<div class="ctx-bar"><div class="ctx-l"><div class="ctx-title">Network <em>Overview</em></div><span class="tag tag-c">All Stores</span></div><div class="ctx-r"><button class="btn btn-gold btn-sm" onclick="openUpload()">&#8679; Load Period</button></div></div><div class="ctrl-bar"><span class="ctrl-lbl">Period</span><select class="per-sel" onchange="setNetPeriod(this.value)">${perOptions}</select></div><div class="vwrap" id="content-wrap"></div>`;
   renderNetworkContent();
 }
@@ -971,25 +992,41 @@ async function renderNetworkContent(){
 
 function networkCardsHTML(np){
   const mainStores=STORES.filter(s=>!s.isAirstream);
+  const isAll=np==='__all__';
   let netLeads=0,netValid=0,netDel=0,dataCount=0;
 
   const cards=mainStores.map(s=>{
-    const snap=getPeriodSnapshot(s.id,np);
-    if(!snap){
-      const hasAny=getStorePeriods(s.id).length>0;
-      return`<div class="net-card no-data"><div class="net-card-name">${s.name}</div><div class="net-card-period">${s.st} · No data for ${periodLabel(np)}</div><div style="font-size:10px;color:var(--t3);margin-top:6px">${hasAny?'Has other periods':'No data uploaded'}</div></div>`;
+    const storePeriods=getStorePeriods(s.id);
+    const t=(()=>{
+      if(isAll){
+        const snaps=storePeriods.map(p=>getPeriodSnapshot(s.id,p.period)).filter(Boolean);
+        if(!snaps.length)return null;
+        return mergeSnapshotData(snaps).totals;
+      }
+      const snap=getPeriodSnapshot(s.id,np);
+      return snap?snap.totals:null;
+    })();
+    if(!t){
+      const hasAny=storePeriods.length>0;
+      return`<div class="net-card no-data"><div class="net-card-name">${s.name}</div><div class="net-card-period">${s.st} · ${isAll?'No data uploaded':`No data for ${periodLabel(np)}`}</div><div style="font-size:10px;color:var(--t3);margin-top:6px">${!isAll&&hasAny?'Has other periods':''}</div></div>`;
     }
-    const t=snap.totals;netLeads+=t.total_leads||0;netValid+=t.valid_leads||0;netDel+=t.delivered||0;dataCount++;
+    netLeads+=t.total_leads||0;netValid+=t.valid_leads||0;netDel+=t.delivered||0;dataCount++;
     const cc=convCls(t.conv_pct);
-    return`<div class="net-card has-data" onclick="goStore('${s.id}')"><div class="net-card-name">${s.name}</div><div class="net-card-period">${s.st} · ${periodLabel(np)}</div><div class="net-card-metrics"><div><div class="net-metric-v b">${t.total_leads}</div><div class="net-metric-l">All Leads</div></div><div><div class="net-metric-v">${t.valid_leads}</div><div class="net-metric-l">Valid</div></div><div><div class="net-metric-v g">${t.delivered}</div><div class="net-metric-l">Deliveries</div></div><div><div class="net-metric-v ${cc}">${t.valid_leads?pct(t.conv_pct):'—'}</div><div class="net-metric-l">Cov%</div></div></div></div>`;
+    const periodLbl=isAll?`${storePeriods.length} period${storePeriods.length!==1?'s':''}`:periodLabel(np);
+    return`<div class="net-card has-data" onclick="goStore('${s.id}')"><div class="net-card-name">${s.name}</div><div class="net-card-period">${s.st} · ${periodLbl}</div><div class="net-card-metrics"><div><div class="net-metric-v b">${t.total_leads}</div><div class="net-metric-l">All Leads</div></div><div><div class="net-metric-v">${t.valid_leads}</div><div class="net-metric-l">Valid</div></div><div><div class="net-metric-v g">${t.delivered}</div><div class="net-metric-l">Deliveries</div></div><div><div class="net-metric-v ${cc}">${t.valid_leads?pct(t.conv_pct):'—'}</div><div class="net-metric-l">Cov%</div></div></div></div>`;
   }).join('');
 
   const netCovPct=netValid?netDel/netValid:0;const netCC=convCls(netCovPct);
   const totalsBar=dataCount>0?`<div class="net-totals"><span class="net-totals-lbl">Network Total · ${dataCount} stores</span><div class="net-total-m"><div class="net-total-v b">${netLeads}</div><div class="net-total-l">All Leads</div></div><div class="net-total-m"><div class="net-total-v">${netValid}</div><div class="net-total-l">Valid</div></div><div class="net-total-m"><div class="net-total-v g">${netDel}</div><div class="net-total-l">Deliveries</div></div><div class="net-total-m"><div class="net-total-v ${netCC}">${netValid?pct(netCovPct):'—'}</div><div class="net-total-l">Cov%</div></div></div>`:'';
 
   // Airstream (separate)
-  const asSnap=getPeriodSnapshot('airstream',np);
-  const asCard=asSnap?`<div class="net-card has-data" onclick="goStore('airstream')"><div class="net-card-name">Airstream</div><div class="net-card-period">BRAND · ${periodLabel(np)}</div><div class="net-card-metrics"><div><div class="net-metric-v b">${asSnap.totals.total_leads}</div><div class="net-metric-l">All Leads</div></div><div><div class="net-metric-v">${asSnap.totals.valid_leads}</div><div class="net-metric-l">Valid</div></div><div><div class="net-metric-v g">${asSnap.totals.delivered}</div><div class="net-metric-l">Deliveries</div></div><div><div class="net-metric-v ${convCls(asSnap.totals.conv_pct)}">${asSnap.totals.valid_leads?pct(asSnap.totals.conv_pct):'—'}</div><div class="net-metric-l">Cov%</div></div></div></div>`:`<div class="net-card no-data"><div class="net-card-name">Airstream</div><div class="net-card-period">BRAND · No data for ${periodLabel(np)}</div></div>`;
+  const asPeriods=getStorePeriods('airstream');
+  const asT=(()=>{
+    if(isAll){const snaps=asPeriods.map(p=>getPeriodSnapshot('airstream',p.period)).filter(Boolean);return snaps.length?mergeSnapshotData(snaps).totals:null;}
+    const snap=getPeriodSnapshot('airstream',np);return snap?snap.totals:null;
+  })();
+  const asPeriodLbl=isAll?`${asPeriods.length} period${asPeriods.length!==1?'s':''}`:periodLabel(np);
+  const asCard=asT?`<div class="net-card has-data" onclick="goStore('airstream')"><div class="net-card-name">Airstream</div><div class="net-card-period">BRAND · ${asPeriodLbl}</div><div class="net-card-metrics"><div><div class="net-metric-v b">${asT.total_leads}</div><div class="net-metric-l">All Leads</div></div><div><div class="net-metric-v">${asT.valid_leads}</div><div class="net-metric-l">Valid</div></div><div><div class="net-metric-v g">${asT.delivered}</div><div class="net-metric-l">Deliveries</div></div><div><div class="net-metric-v ${convCls(asT.conv_pct)}">${asT.valid_leads?pct(asT.conv_pct):'—'}</div><div class="net-metric-l">Cov%</div></div></div></div>`:`<div class="net-card no-data"><div class="net-card-name">Airstream</div><div class="net-card-period">BRAND · ${isAll?'No data uploaded':`No data for ${periodLabel(np)}`}</div></div>`;
 
   // Network MoM cards — consecutive pairs across all available periods
   const allPeriodsAsc=[...getAllNetworkPeriods()].reverse();
