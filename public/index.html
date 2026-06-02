@@ -767,8 +767,8 @@ function buildRail(){
    NAVIGATION
 ═══════════════════════════════════════════════════════════════ */
 function goStore(id){curStore=id;activeDR='all';drFrom='';drTo='';buildRail();buildPage();}
-function setView(v){curView=v;renderContent();}
-function setDR(q){activeDR=q;drFrom='';drTo='';renderContent();}
+function setView(v){curView=v;document.querySelectorAll('.vp-btn[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===v));renderContent();}
+function setDR(q){activeDR=q;drFrom='';drTo='';document.querySelectorAll('.dr-btn[data-dr]').forEach(b=>b.classList.toggle('active',b.dataset.dr===q));renderContent();}
 function applyCustomRange(){
   const f=document.getElementById('dr-from')?.value;const t=document.getElementById('dr-to')?.value;
   if(f||t){drFrom=f||'';drTo=t||'';activeDR='custom';}renderContent();
@@ -805,9 +805,9 @@ function buildPage(){
   const perOptions=periods.map(p=>`<option value="${p.period}"${p.period===activePeriod?' selected':''}>${periodLabel(p.period)} · ${p.fileName||p.period}</option>`).join('');
   const presets=['all','mtd','last30','last7'];
   const pLabels={all:'All Data',mtd:'MTD',last30:'Last 30',last7:'Last 7'};
-  const drBtns=presets.map(q=>`<button class="dr-btn${activeDR===q?' active':''}" onclick="setDR('${q}')">${pLabels[q]}</button>`).join('');
+  const drBtns=presets.map(q=>`<button class="dr-btn${activeDR===q?' active':''}" data-dr="${q}" onclick="setDR('${q}')">${pLabels[q]}</button>`).join('');
   const views=[{k:'table',l:'Rep Table'},{k:'summary',l:'Summary'},{k:'compare',l:'Compare'}];
-  const viewBtns=views.map(v=>`<button class="vp-btn${curView===v.k?' active':''}" onclick="setView('${v.k}')">${v.l}</button>`).join('');
+  const viewBtns=views.map(v=>`<button class="vp-btn${curView===v.k?' active':''}" data-view="${v.k}" onclick="setView('${v.k}')">${v.l}</button>`).join('');
   pg.innerHTML=
     `<div class="ctx-bar">
       <div class="ctx-l">
