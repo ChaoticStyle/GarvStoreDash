@@ -76,6 +76,10 @@ body.booting #page,body.booting .store-rail .s-tab{visibility:hidden}
 .btn-sm{padding:4px 10px;font-size:11px}
 .btn-danger{background:var(--r-bg);border-color:rgba(239,68,68,.3);color:var(--red)}
 .btn-danger:hover{background:rgba(239,68,68,.18)}
+.btn-purple{background:rgba(139,92,246,.15);border-color:rgba(139,92,246,.35);color:#a78bfa}
+.btn-purple:hover{background:rgba(139,92,246,.28)}
+.btn-gold-outline{background:rgba(245,166,35,.12);border-color:rgba(245,166,35,.4);color:var(--gold)}
+.btn-gold-outline:hover{background:rgba(245,166,35,.22)}
 
 /* CONTEXT + CONTROL BARS */
 .ctx-bar{background:var(--ink1);border-bottom:1px solid var(--rule);padding:9px 24px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
@@ -307,9 +311,21 @@ td.delta-eq{color:var(--t3)}
     </div>
     <div style="height:1px;background:var(--rule2);margin:16px 0"></div>
     <div>
+      <div style="font-size:9px;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px">Sync</div>
+      <p style="margin-bottom:10px;color:var(--t2)">Force a full re-fetch from the server so all browsers see the same data. Or wipe the local browser cache entirely.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-purple btn-sm" onclick="refreshFromServer()">&#8635; Refresh from Server</button>
+        <button class="btn btn-gold-outline btn-sm" onclick="clearLocalCache()">&#128465; Clear Local Cache</button>
+      </div>
+    </div>
+    <div style="height:1px;background:var(--rule2);margin:16px 0"></div>
+    <div>
       <div style="font-size:9px;color:var(--red);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px">Danger Zone</div>
-      <p style="margin-bottom:10px;color:var(--t2)">Permanently deletes all period snapshots for the current store from the server. Cannot be undone.</p>
-      <button class="btn btn-danger btn-sm" onclick="deleteAllPeriods()">&#9888; Delete All Server Data</button>
+      <p style="margin-bottom:10px;color:var(--t2)">Permanently delete snapshots from the server. Cannot be undone.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-danger btn-sm" onclick="deleteAllPeriods()">&#9888; Clear Current Store Data</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteAllStoresData()">&#9888; Delete All Server Data</button>
+      </div>
     </div>
     <div class="mfoot" style="margin-top:18px">
       <button class="btn btn-ghost" onclick="closeOv('ov-admin')">Close</button>
@@ -1122,6 +1138,25 @@ async function deleteAllPeriods(){
   toast(`All periods deleted for ${s?.name||curStore}`,'green');
   closeOv('ov-admin');buildRail();buildPage();
 }
+async function deleteAllStoresData(){
+  const totalPeriods=STORES.reduce((n,s)=>n+getStorePeriods(s.id).length,0);
+  if(!totalPeriods){toast('No data on server','');return;}
+  if(!confirm(`Delete ALL server data across ALL ${STORES.length} stores (${totalPeriods} period snapshot(s))?\n\nThis removes everything for every user and cannot be undone.`))return;
+  if(!confirm(`Final confirmation: permanently delete ALL snapshots for ALL stores?`))return;
+  let deleted=0;
+  for(const s of STORES){
+    const periods=getStorePeriods(s.id);
+    for(const p of [...periods]){
+      if(HAS_BACKEND)await serverDeletePeriod(s.id,p.period);
+      removeFromLocalCache(s.id,p.period);
+      delete _sessionRows[`${s.id}_${p.period}`];
+      deleted++;
+    }
+    delete _activePeriod[s.id];
+  }
+  toast(`Deleted ${deleted} snapshot(s) across all stores`,'green');
+  closeOv('ov-admin');buildRail();buildPage();
+}
 
 /* ═══════════════════════════════════════════════════════════════
    MODALS & TOAST
@@ -1149,14 +1184,49 @@ async function hydrate(){
   showSyncBadge(true);
   // 1. Fetch period indexes for all stores in parallel
   await Promise.allSettled(STORES.map(s=>fetchAndCacheIndex(s.id)));
-  // 2. Find first store with periods and preload its most recent snapshot
-  const firstLive=STORES.find(s=>getStorePeriods(s.id).length>0);
-  if(firstLive){
-    curStore=firstLive.id;
-    const period=getStorePeriods(firstLive.id)[0]?.period;
-    if(period)await fetchAndCacheSnap(firstLive.id,period);
+  // 2. Fetch the most recent snapshot for EVERY live store in parallel
+  //    so any user with the link sees the same data on load
+  const liveStores=STORES.filter(s=>getStorePeriods(s.id).length>0);
+  if(liveStores.length>0){
+    const firstMain=liveStores.find(s=>!s.isAirstream)||liveStores[0];
+    curStore=firstMain.id;
+    await Promise.allSettled(liveStores.map(s=>{
+      const period=getStorePeriods(s.id)[0]?.period;
+      return period?fetchAndCacheSnap(s.id,period):Promise.resolve();
+    }));
   }
   showSyncBadge(false);
+}
+
+async function refreshFromServer(){
+  if(!HAS_BACKEND){toast('No server connection','');return;}
+  showSyncBadge(true);
+  // Clear cached indexes and snapshots (keep rows — they are large and rarely change)
+  Object.keys(localStorage).filter(k=>k.startsWith('sdash_ci_')||k.startsWith('sdash_cs_')).forEach(k=>localStorage.removeItem(k));
+  Object.keys(_activePeriod).forEach(k=>delete _activePeriod[k]);
+  // Re-fetch everything fresh
+  await Promise.allSettled(STORES.map(s=>fetchAndCacheIndex(s.id)));
+  const liveStores=STORES.filter(s=>getStorePeriods(s.id).length>0);
+  if(liveStores.length>0){
+    const firstMain=liveStores.find(s=>!s.isAirstream)||liveStores[0];
+    curStore=firstMain.id;
+    await Promise.allSettled(liveStores.map(s=>{
+      const period=getStorePeriods(s.id)[0]?.period;
+      return period?fetchAndCacheSnap(s.id,period):Promise.resolve();
+    }));
+  }
+  showSyncBadge(false);
+  buildRail();buildPage();
+  closeOv('ov-admin');
+  toast('Refreshed from server','green');
+}
+
+function clearLocalCache(){
+  Object.keys(localStorage).filter(k=>k.startsWith('sdash_')).forEach(k=>localStorage.removeItem(k));
+  Object.keys(_sessionRows).forEach(k=>delete _sessionRows[k]);
+  Object.keys(_activePeriod).forEach(k=>delete _activePeriod[k]);
+  toast('Cache cleared — reloading…','');
+  setTimeout(()=>location.reload(),900);
 }
 
 document.addEventListener('DOMContentLoaded',async()=>{
