@@ -28,13 +28,8 @@ export default async (req) => {
       await Promise.allSettled([
         store.delete(`snap_${id}_${period}`),
         store.delete(`rows_${id}_${period}`),
+        store.delete(`meta_${id}_${period}`),
       ]);
-
-      // Remove from period index
-      let index = [];
-      try { index = (await store.get(`index_${id}`, { type: 'json' })) || []; } catch {}
-      index = index.filter(p => p.period !== period);
-      await store.setJSON(`index_${id}`, index);
     } catch (e) {
       console.warn('delete period failed:', e.message);
     }
