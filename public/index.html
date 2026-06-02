@@ -215,6 +215,33 @@ td.delta-eq{color:var(--t3)}
 @media(max-width:1000px){.kpi-strip{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:760px){.kpi-strip{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:600px){.tb-row1,.ctx-bar,.vwrap{padding-left:14px;padding-right:14px}.store-rail{padding:0 14px}}
+
+/* NETWORK OVERVIEW */
+.net-totals{background:var(--ink3);border:1px solid var(--rule2);border-radius:var(--radius2);padding:13px 18px;margin-bottom:16px;display:flex;gap:24px;flex-wrap:wrap;align-items:center}
+.net-totals-lbl{font-size:9px;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;margin-right:6px;white-space:nowrap}
+.net-total-m{display:flex;flex-direction:column;min-width:62px}
+.net-total-v{font-family:var(--disp);font-size:22px;line-height:1}
+.net-total-l{font-size:9px;color:var(--t3);letter-spacing:.7px;text-transform:uppercase;margin-top:2px}
+.net-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:11px;margin-bottom:18px}
+.net-card{background:var(--card);border:1px solid var(--rule);border-radius:var(--radius2);padding:15px 17px;transition:border-color .12s,background .12s}
+.net-card.has-data{cursor:pointer}.net-card.has-data:hover{border-color:var(--gold);background:var(--g-bg)}
+.net-card.no-data{opacity:.42;cursor:default}
+.net-card-name{font-family:var(--disp);font-size:17px;letter-spacing:1.5px;line-height:1;margin-bottom:3px}
+.net-card-period{font-size:10px;color:var(--t3);margin-bottom:11px}
+.net-card-metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:7px 10px}
+.net-metric-v{font-family:var(--disp);font-size:19px;line-height:1}
+.net-metric-l{font-size:9px;color:var(--t3);letter-spacing:.7px;text-transform:uppercase;margin-top:1px}
+.net-as-sep{font-size:9px;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;padding:6px 0 10px;border-top:1px solid var(--rule);margin-top:2px}
+
+/* MONTH-OVER-MONTH CARDS */
+.mom-hd{font-size:9px;color:var(--t3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:9px}
+.mom-strip{display:flex;gap:9px;overflow-x:auto;padding-bottom:5px;scrollbar-width:thin}
+.mom-strip::-webkit-scrollbar{height:4px}.mom-strip::-webkit-scrollbar-thumb{background:var(--rule2);border-radius:2px}
+.mom-card{background:var(--card);border:1px solid var(--rule);border-radius:var(--radius2);padding:12px 15px;flex-shrink:0;min-width:168px}
+.mom-period{font-size:9px;color:var(--t2);letter-spacing:1px;text-transform:uppercase;margin-bottom:9px;padding-bottom:8px;border-bottom:1px solid var(--rule);font-weight:500}
+.mom-metric{display:flex;justify-content:space-between;align-items:center;padding:3px 0}
+.mom-lbl{font-size:10px;color:var(--t3)}
+.mom-val{font-size:11px;font-family:var(--mono);font-weight:500}
 </style>
 </head>
 <body class="booting">
@@ -235,8 +262,7 @@ td.delta-eq{color:var(--t3)}
       <div id="sync-badge"><span class="sb-dot"></span>Syncing</div>
     </div>
     <div class="tb-actions">
-      <button class="btn btn-ghost btn-sm" onclick="openManage()">&#9881; Manage Periods</button>
-      <button class="btn btn-gold" onclick="openUpload()">&#8679; Load Period Data</button>
+      <button class="btn btn-ghost btn-sm" onclick="openAdmin()">&#9881; Admin</button>
       <input type="file" id="file-input-hidden" accept=".csv" multiple style="display:none" onchange="handleFiles(this.files)">
     </div>
   </div>
@@ -268,16 +294,25 @@ td.delta-eq{color:var(--t3)}
   </div>
 </div>
 
-<!-- MANAGE PERIODS MODAL -->
-<div class="ov" id="ov-manage" onclick="if(event.target===this)closeOv('ov-manage')">
+<!-- ADMIN ACTIONS MODAL -->
+<div class="ov" id="ov-admin" onclick="if(event.target===this)closeOv('ov-admin')">
   <div class="modal md">
-    <button class="mcl" onclick="closeOv('ov-manage')">&#10005;</button>
-    <h2>&#9881; Manage Periods</h2>
-    <p>All stored period snapshots for <strong id="manage-store-name">—</strong>. Deleting removes data from the server for all users.</p>
-    <ul class="per-list" id="manage-list"></ul>
-    <div class="mfoot">
-      <button class="btn btn-ghost" onclick="closeOv('ov-manage')">Close</button>
-      <button class="btn btn-gold btn-sm" onclick="closeOv('ov-manage');openUpload()">&#8679; Load Another Period</button>
+    <button class="mcl" onclick="closeOv('ov-admin')">&#10005;</button>
+    <h2>&#9881; Admin Actions</h2>
+    <div style="margin-bottom:14px">
+      <div style="font-size:9px;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px">Manage Periods — <strong id="admin-store-name" style="color:var(--t1);font-weight:600;text-transform:none;letter-spacing:0">—</strong></div>
+      <p style="margin-bottom:8px">Deleting removes data from the server for all users.</p>
+      <ul class="per-list" id="manage-list"></ul>
+      <button class="btn btn-gold btn-sm" onclick="closeOv('ov-admin');openUpload()">&#8679; Load Another Period</button>
+    </div>
+    <div style="height:1px;background:var(--rule2);margin:16px 0"></div>
+    <div>
+      <div style="font-size:9px;color:var(--red);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px">Danger Zone</div>
+      <p style="margin-bottom:10px;color:var(--t2)">Permanently deletes all period snapshots for the current store from the server. Cannot be undone.</p>
+      <button class="btn btn-danger btn-sm" onclick="deleteAllPeriods()">&#9888; Delete All Server Data</button>
+    </div>
+    <div class="mfoot" style="margin-top:18px">
+      <button class="btn btn-ghost" onclick="closeOv('ov-admin')">Close</button>
     </div>
   </div>
 </div>
@@ -613,6 +648,7 @@ let curView='table';
 let activeDR='all',drFrom='',drTo='';
 let sortCol='delivered',sortDir='desc';
 let pending=[];
+let netPeriod='';
 const _activePeriod={};
 const _cmpSelected={};
 
@@ -691,6 +727,14 @@ function getLiveData(id,period){
 ═══════════════════════════════════════════════════════════════ */
 function buildRail(){
   const rail=document.getElementById('store-rail');rail.innerHTML='';
+  // Network overview tab
+  const netLive=STORES.filter(s=>!s.isAirstream&&getStorePeriods(s.id).length>0).length;
+  const netTotal=STORES.filter(s=>!s.isAirstream).length;
+  const netEl=document.createElement('div');
+  netEl.className='s-tab'+(curStore==='network'?' active':'')+(netLive>0?' live':'');
+  netEl.innerHTML='&#127760; Network<span class="s-score">'+netLive+'/'+netTotal+'</span>';
+  netEl.onclick=()=>goStore('network');
+  rail.appendChild(netEl);
   STORES.forEach(s=>{
     const periods=getStorePeriods(s.id);const has=periods.length>0;
     const el=document.createElement('div');
@@ -730,7 +774,9 @@ function changePeriod(period){
    BUILD PAGE
 ═══════════════════════════════════════════════════════════════ */
 function buildPage(){
-  const pg=document.getElementById('page');const s=STORES.find(x=>x.id===curStore);
+  const pg=document.getElementById('page');
+  if(curStore==='network'){buildNetworkPage(pg);return;}
+  const s=STORES.find(x=>x.id===curStore);
   const periods=getStorePeriods(curStore);
   if(!periods.length){pg.innerHTML=emptyHTML(s);return;}
   const activePeriod=getActivePeriod(curStore);
@@ -863,6 +909,68 @@ function summaryHTML(reps,totals,period){
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   NETWORK OVERVIEW
+═══════════════════════════════════════════════════════════════ */
+function getAllNetworkPeriods(){
+  const all=new Set();
+  STORES.forEach(s=>getStorePeriods(s.id).forEach(p=>all.add(p.period)));
+  return[...all].sort().reverse();
+}
+function getNetPeriod(){const all=getAllNetworkPeriods();if(!all.length)return null;return(netPeriod&&all.includes(netPeriod))?netPeriod:all[0];}
+function setNetPeriod(p){netPeriod=p;renderNetworkContent();}
+
+function buildNetworkPage(pg){
+  const allPeriods=getAllNetworkPeriods();
+  const np=getNetPeriod();
+  if(!allPeriods.length){pg.innerHTML=emptyHTML({name:'Network',id:'network',isAirstream:false});return;}
+  const perOptions=allPeriods.map(p=>`<option value="${p}"${p===np?' selected':''}>${periodLabel(p)}</option>`).join('');
+  pg.innerHTML=`<div class="ctx-bar"><div class="ctx-l"><div class="ctx-title">Network <em>Overview</em></div><span class="tag tag-c">All Stores</span></div><div class="ctx-r"><button class="btn btn-gold btn-sm" onclick="openUpload()">&#8679; Load Period</button></div></div><div class="ctrl-bar"><span class="ctrl-lbl">Period</span><select class="per-sel" onchange="setNetPeriod(this.value)">${perOptions}</select></div><div class="vwrap" id="content-wrap"></div>`;
+  renderNetworkContent();
+}
+
+async function renderNetworkContent(){
+  const wrap=document.getElementById('content-wrap');if(!wrap)return;
+  const np=getNetPeriod();if(!np){wrap.innerHTML='';return;}
+  wrap.innerHTML=networkCardsHTML(np);
+  // Background-fetch any missing snapshots for this period then re-render
+  if(HAS_BACKEND){
+    const missing=STORES.filter(s=>{
+      const hasPeriod=getStorePeriods(s.id).some(p=>p.period===np);
+      return hasPeriod&&!getCachedSnap(s.id,np);
+    });
+    if(missing.length){
+      await Promise.allSettled(missing.map(s=>fetchAndCacheSnap(s.id,np)));
+      if(document.getElementById('content-wrap')===wrap)wrap.innerHTML=networkCardsHTML(np);
+    }
+  }
+}
+
+function networkCardsHTML(np){
+  const mainStores=STORES.filter(s=>!s.isAirstream);
+  let netLeads=0,netValid=0,netDel=0,dataCount=0;
+
+  const cards=mainStores.map(s=>{
+    const snap=getPeriodSnapshot(s.id,np);
+    if(!snap){
+      const hasAny=getStorePeriods(s.id).length>0;
+      return`<div class="net-card no-data"><div class="net-card-name">${s.name}</div><div class="net-card-period">${s.st} · No data for ${periodLabel(np)}</div><div style="font-size:10px;color:var(--t3);margin-top:6px">${hasAny?'Has other periods':'No data uploaded'}</div></div>`;
+    }
+    const t=snap.totals;netLeads+=t.total_leads||0;netValid+=t.valid_leads||0;netDel+=t.delivered||0;dataCount++;
+    const cc=convCls(t.conv_pct);
+    return`<div class="net-card has-data" onclick="goStore('${s.id}')"><div class="net-card-name">${s.name}</div><div class="net-card-period">${s.st} · ${periodLabel(np)}</div><div class="net-card-metrics"><div><div class="net-metric-v b">${t.total_leads}</div><div class="net-metric-l">All Leads</div></div><div><div class="net-metric-v">${t.valid_leads}</div><div class="net-metric-l">Valid</div></div><div><div class="net-metric-v g">${t.delivered}</div><div class="net-metric-l">Deliveries</div></div><div><div class="net-metric-v ${cc}">${t.valid_leads?pct(t.conv_pct):'—'}</div><div class="net-metric-l">Cov%</div></div></div></div>`;
+  }).join('');
+
+  const netCovPct=netValid?netDel/netValid:0;const netCC=convCls(netCovPct);
+  const totalsBar=dataCount>0?`<div class="net-totals"><span class="net-totals-lbl">Network Total · ${dataCount} stores</span><div class="net-total-m"><div class="net-total-v b">${netLeads}</div><div class="net-total-l">All Leads</div></div><div class="net-total-m"><div class="net-total-v">${netValid}</div><div class="net-total-l">Valid</div></div><div class="net-total-m"><div class="net-total-v g">${netDel}</div><div class="net-total-l">Deliveries</div></div><div class="net-total-m"><div class="net-total-v ${netCC}">${netValid?pct(netCovPct):'—'}</div><div class="net-total-l">Cov%</div></div></div>`:'';
+
+  // Airstream (separate)
+  const asSnap=getPeriodSnapshot('airstream',np);
+  const asCard=asSnap?`<div class="net-card has-data" onclick="goStore('airstream')"><div class="net-card-name">Airstream</div><div class="net-card-period">BRAND · ${periodLabel(np)}</div><div class="net-card-metrics"><div><div class="net-metric-v b">${asSnap.totals.total_leads}</div><div class="net-metric-l">All Leads</div></div><div><div class="net-metric-v">${asSnap.totals.valid_leads}</div><div class="net-metric-l">Valid</div></div><div><div class="net-metric-v g">${asSnap.totals.delivered}</div><div class="net-metric-l">Deliveries</div></div><div><div class="net-metric-v ${convCls(asSnap.totals.conv_pct)}">${asSnap.totals.valid_leads?pct(asSnap.totals.conv_pct):'—'}</div><div class="net-metric-l">Cov%</div></div></div></div>`:`<div class="net-card no-data"><div class="net-card-name">Airstream</div><div class="net-card-period">BRAND · No data for ${periodLabel(np)}</div></div>`;
+
+  return totalsBar+`<div class="net-grid">${cards}</div><div class="net-as-sep">Airstream Brand</div><div class="net-grid">${asCard}</div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
    OPTION C — PERIOD COMPARE
 ═══════════════════════════════════════════════════════════════ */
 function compareHTML(storeId){
@@ -878,18 +986,29 @@ function compareHTML(storeId){
   const allReps=new Set();Object.values(periodData).forEach(d=>d.reps.forEach(r=>allReps.add(r.name)));
   const repNames=[...allReps].sort();
   const colGroups=selPeriods.map((p,i)=>`<th class="cmp-period-hd ${i%2===0?'':'alt'}" colspan="3">${periodLabel(p)}</th>`);
-  const subHeaders=selPeriods.flatMap(()=>['<th class="r">Leads</th>','<th class="r">Delivered</th>','<th class="r">Conv%</th>']);
-  const deltaHd=selPeriods.length>=2?'<th class="r">Δ Conv%</th>':'';
+  const subHeaders=selPeriods.flatMap(()=>['<th class="r" style="min-width:78px">Leads</th>','<th class="r" style="min-width:78px">Delivered</th>','<th class="r" style="min-width:78px">Conv%</th>']);
   const tableRows=repNames.map(name=>{
     const cells=selPeriods.map(p=>{const d=periodData[p];if(!d)return'<td class="r no-data">—</td><td class="r no-data">—</td><td class="r no-data">—</td>';const rep=d.reps.find(r=>r.name===name);if(!rep)return'<td class="r no-data">—</td><td class="r no-data">—</td><td class="r no-data">—</td>';const cc=convCls(rep.conv_pct);return`<td class="r">${rep.total_leads}</td><td class="r">${rep.delivered}</td><td class="r ${cc}">${rep.valid_leads?pct(rep.conv_pct):'—'}</td>`;}).join('');
-    let delta='';
-    if(selPeriods.length>=2){const first=periodData[selPeriods[0]]?.reps.find(r=>r.name===name);const last=periodData[selPeriods[selPeriods.length-1]]?.reps.find(r=>r.name===name);if(first?.valid_leads&&last?.valid_leads){const diff=last.conv_pct-first.conv_pct;const sign=diff>0?'+':'';const cls=diff>0.005?'delta-pos':diff<-0.005?'delta-neg':'delta-eq';delta=`<td class="r ${cls}">${sign}${(diff*100).toFixed(1)}pp</td>`;}else delta='<td class="r no-data">—</td>';}
-    return`<tr><td class="nm">${name}</td>${cells}${delta}</tr>`;
+    return`<tr><td class="nm">${name}</td>${cells}</tr>`;
   }).join('');
   const totalsCells=selPeriods.map(p=>{const d=periodData[p];if(!d)return'<td class="r">—</td><td class="r">—</td><td class="r">—</td>';const cc=convCls(d.totals.conv_pct);return`<td class="r">${d.totals.total_leads}</td><td class="r">${d.totals.delivered}</td><td class="r ${cc}">${d.totals.valid_leads?pct(d.totals.conv_pct):'—'}</td>`;}).join('');
-  let totDelta='';
-  if(selPeriods.length>=2){const t0=periodData[selPeriods[0]]?.totals;const tn=periodData[selPeriods[selPeriods.length-1]]?.totals;if(t0?.valid_leads&&tn?.valid_leads){const diff=tn.conv_pct-t0.conv_pct;const sign=diff>0?'+':'';const cls=diff>0.005?'delta-pos':diff<-0.005?'delta-neg':'delta-eq';totDelta=`<td class="r ${cls}">${sign}${(diff*100).toFixed(1)}pp</td>`;}}
-  return`<div style="padding-bottom:12px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px"><span style="font-size:9px;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase">Compare Periods</span><div class="cmp-checks">${checks}</div></div><div class="tshell"><div class="tscroll"><table><thead><tr><th rowspan="2">Rep</th>${colGroups.join('')}${selPeriods.length>=2?'<th rowspan="2" class="r">Δ Conv%</th>':''}</tr><tr>${subHeaders.join('')}</tr></thead><tbody>${tableRows}<tr class="totals-row"><td class="nm">TOTALS</td>${totalsCells}${totDelta}</tr></tbody></table></div></div><div style="font-size:10px;color:var(--t3);padding:4px 2px">Δ = Conv% change from ${periodLabel(selPeriods[0])} to ${periodLabel(selPeriods[selPeriods.length-1])} · pp = percentage points · Using all-data snapshots per period</div></div>`;
+  // Month-over-month cards — one card per consecutive period pair
+  let momCards='';
+  if(selPeriods.length>=2){
+    const ar=v=>v>0?'↑':v<0?'↓':'→';
+    const cl=v=>v>0?'delta-pos':v<0?'delta-neg':'delta-eq';
+    const sg=v=>v>0?'+':'';
+    for(let i=0;i<selPeriods.length-1;i++){
+      const pa=selPeriods[i],pb=selPeriods[i+1];
+      const ta=periodData[pa]?.totals,tb=periodData[pb]?.totals;
+      if(!ta||!tb){momCards+=`<div class="mom-card"><div class="mom-period">${periodLabel(pa)} — ${periodLabel(pb)}</div><div style="color:var(--t3);font-size:10px;padding-top:4px">No data</div></div>`;continue;}
+      const dL=tb.total_leads-ta.total_leads,dD=tb.delivered-ta.delivered;
+      const dC=(ta.valid_leads&&tb.valid_leads)?(tb.conv_pct-ta.conv_pct)*100:null;
+      momCards+=`<div class="mom-card"><div class="mom-period">${periodLabel(pa)} — ${periodLabel(pb)}</div><div class="mom-metric"><span class="mom-lbl">Leads</span><span class="mom-val ${cl(dL)}">${sg(dL)}${dL} ${ar(dL)}</span></div><div class="mom-metric"><span class="mom-lbl">Delivered</span><span class="mom-val ${cl(dD)}">${sg(dD)}${dD} ${ar(dD)}</span></div><div class="mom-metric"><span class="mom-lbl">Conv %</span><span class="mom-val ${dC!==null?cl(dC):'delta-eq'}">${dC!==null?sg(dC)+dC.toFixed(1)+'% '+ar(dC):'—'}</span></div></div>`;
+    }
+  }
+  const momSection=momCards?`<div style="margin-top:18px"><div class="mom-hd">&#9650; Month-over-Month Changes</div><div class="mom-strip">${momCards}</div></div>`:'';
+  return`<div style="padding-bottom:12px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px"><span style="font-size:9px;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase">Compare Periods</span><div class="cmp-checks">${checks}</div></div><div class="tshell"><div class="tscroll"><table><thead><tr><th rowspan="2" style="min-width:140px">Rep</th>${colGroups.join('')}</tr><tr>${subHeaders.join('')}</tr></thead><tbody>${tableRows}<tr class="totals-row"><td class="nm">TOTALS</td>${totalsCells}</tr></tbody></table></div></div><div style="font-size:10px;color:var(--t3);padding:4px 2px">Using all-data snapshots per period</div>${momSection}</div>`;
 }
 function toggleCmpPeriod(storeId,period,checked){if(!_cmpSelected[storeId])_cmpSelected[storeId]=new Set();if(checked)_cmpSelected[storeId].add(period);else _cmpSelected[storeId].delete(period);renderContent();}
 
@@ -965,19 +1084,19 @@ function processUpload(){
 /* ═══════════════════════════════════════════════════════════════
    MANAGE PERIODS MODAL
 ═══════════════════════════════════════════════════════════════ */
-function openManage(){
+function openAdmin(){
   const s=STORES.find(x=>x.id===curStore);
-  document.getElementById('manage-store-name').textContent=s?s.name:curStore;
+  document.getElementById('admin-store-name').textContent=s?s.name:curStore;
   const periods=getStorePeriods(curStore);
   const list=document.getElementById('manage-list');
-  if(!periods.length){list.innerHTML='<li class="per-item" style="color:var(--t3)">No periods stored for this store.</li>';openOv('ov-manage');return;}
+  if(!periods.length){list.innerHTML='<li class="per-item" style="color:var(--t3)">No periods stored for this store.</li>';openOv('ov-admin');return;}
   list.innerHTML=periods.map(p=>`
     <li class="per-item">
       <span class="per-item-label">${periodLabel(p.period)}</span>
       <span class="per-item-meta">${p.fileName||p.period} · ${p.rep_count||0} reps · ${p.delivered||0} del</span>
       <button class="per-item-del" onclick="deletePeriod('${curStore}','${p.period}')">Delete</button>
     </li>`).join('');
-  openOv('ov-manage');
+  openOv('ov-admin');
 }
 async function deletePeriod(storeId,period){
   if(!confirm(`Delete ${periodLabel(period)} data for ${STORES.find(x=>x.id===storeId)?.name||storeId}?\n\nThis removes it from the server for all users.`))return;
@@ -986,7 +1105,22 @@ async function deletePeriod(storeId,period){
   delete _sessionRows[`${storeId}_${period}`];
   if(getActivePeriod(storeId)===period)delete _activePeriod[storeId];
   toast(`${periodLabel(period)} deleted`,'green');
-  closeOv('ov-manage');buildRail();buildPage();
+  openAdmin();buildRail();buildPage();
+}
+async function deleteAllPeriods(){
+  const s=STORES.find(x=>x.id===curStore);
+  const periods=getStorePeriods(curStore);
+  if(!periods.length){toast('No periods to delete','');return;}
+  if(!confirm(`Delete ALL ${periods.length} period(s) for ${s?.name||curStore}?\n\nThis removes all data from the server for all users and cannot be undone.`))return;
+  if(!confirm(`Final confirmation: permanently delete all ${periods.length} snapshot(s) for ${s?.name||curStore}?`))return;
+  for(const p of [...periods]){
+    if(HAS_BACKEND)await serverDeletePeriod(curStore,p.period);
+    removeFromLocalCache(curStore,p.period);
+    delete _sessionRows[`${curStore}_${p.period}`];
+  }
+  delete _activePeriod[curStore];
+  toast(`All periods deleted for ${s?.name||curStore}`,'green');
+  closeOv('ov-admin');buildRail();buildPage();
 }
 
 /* ═══════════════════════════════════════════════════════════════
