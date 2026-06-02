@@ -399,17 +399,34 @@ function dedupCustomers(rows,H){
     for(const ph of phones){if(byPhone[ph]!==undefined)union(i,byPhone[ph]);else byPhone[ph]=i;}
   }
   const groups={};for(let i=0;i<n;i++){const k=find(i);(groups[k]=groups[k]||[]).push(i);}
-  const winners=[];
+  const leads=[];const extraSales=[];
+  const stockIdx=H['Stock Number'];
   for(const k in groups){
-    const idxs=groups[k];if(idxs.length===1){winners.push(rows[idxs[0]]);continue;}
+    const idxs=groups[k];
+    // Pick one winner for lead counting (existing logic)
     let best=idxs[0],bestSold=isDelivered(rows[best],H),bestTs=Date.parse(rows[best][H.LEAD_ORIG]||'')||0;
-    for(let j=1;j<idxs.length;j++){
-      const i=idxs[j],sold=isDelivered(rows[i],H),ts=Date.parse(rows[i][H.LEAD_ORIG]||'')||0;
-      if((sold&&!bestSold)||(sold===bestSold&&ts>bestTs)){best=i;bestSold=sold;bestTs=ts;}
+    if(idxs.length>1){
+      for(let j=1;j<idxs.length;j++){
+        const i=idxs[j],sold=isDelivered(rows[i],H),ts=Date.parse(rows[i][H.LEAD_ORIG]||'')||0;
+        if((sold&&!bestSold)||(sold===bestSold&&ts>bestTs)){best=i;bestSold=sold;bestTs=ts;}
+      }
     }
-    winners.push(rows[best]);
+    leads.push(rows[best]);
+    // Find extra sold rows with distinct stock numbers (each = an additional sale)
+    if(idxs.length>1&&stockIdx!==undefined){
+      const bestStock=isDelivered(rows[best],H)?(rows[best][stockIdx]||'').trim().toLowerCase():null;
+      const seen=new Set(bestStock?[bestStock]:[]);
+      for(const i of idxs){
+        if(i===best)continue;
+        if(!isDelivered(rows[i],H))continue;
+        const stock=(rows[i][stockIdx]||'').trim().toLowerCase();
+        if(!stock||seen.has(stock))continue;
+        seen.add(stock);
+        extraSales.push(rows[i]);
+      }
+    }
   }
-  return winners;
+  return{leads,extraSales};
 }
 const PII_COL_HEADERS=['Customer','Email','Daytime Phone','Day Phone','Cell Phone','Evening Phone'];
 function piiColIndexes(H){
@@ -445,7 +462,7 @@ function recomputeRaw(rows,H,storeId,fromStr,toStr){
     const s=visitStats[rep]=visitStats[rep]||{visits:0,write_ups:0,trades:0};
     s.visits++;if((r[H.WRITE_UP]||'').trim()==='Y')s.write_ups++;if((r[H.TRADE_APP]||'').trim()==='Y')s.trades++;
   });
-  const dedup=dedupCustomers(filtered,H);
+  const{leads:dedup,extraSales}=dedupCustomers(filtered,H);
   const fromMs=fromStr?new Date(fromStr).getTime():null;
   const toMs=toStr?new Date(toStr).setHours(23,59,59,999):null;
   const inRange=ms=>{if(isNaN(ms))return false;if(fromMs!==null&&ms<fromMs)return false;if(toMs!==null&&ms>toMs)return false;return true;};
@@ -459,6 +476,15 @@ function recomputeRaw(rows,H,storeId,fromStr,toStr){
   });
   const keep=classified.filter(c=>c.inLeadPeriod||c.inSalePeriod);
   const byRep={};keep.forEach(c=>{const rep=(c.row[H.SALES_REP]||'').trim();(byRep[rep]=byRep[rep]||[]).push(c);});
+  // Inject extra deliveries (same customer, different sold stock number)
+  extraSales.forEach(r=>{
+    const modMs2=Date.parse(r[H.LEAD_MOD]||'');const origMs2=Date.parse(r[H.LEAD_ORIG]||'');
+    const saleDateMs=!isNaN(modMs2)?modMs2:origMs2;
+    const inSalePeriod=noFilter?true:(!isNaN(saleDateMs)&&inRange(saleDateMs));
+    if(!inSalePeriod)return;
+    const rep=(r[H.SALES_REP]||'').trim();if(!rep)return;
+    (byRep[rep]=byRep[rep]||[]).push({row:r,sold:true,inLeadPeriod:false,inSalePeriod:true});
+  });
   const reps=[];
   Object.entries(byRep).forEach(([rep,cr])=>{
     if(BLACKLIST.has(normName(rep))||isSysAccount(rep))return;
@@ -484,7 +510,7 @@ function recomputeRaw(rows,H,storeId,fromStr,toStr){
     const multi=validLeads.filter(c=>{let cnt=0;if(c.row[H.LAST_PHONE]?.trim())cnt++;if(c.row[H.LAST_EMAIL]?.trim())cnt++;if(c.row[H.LAST_TEXT]?.trim())cnt++;return cnt>=2;}).length;
     const multiChRate=validLeads.length?multi/validLeads.length:0;
     const vs=visitStats[rep]||{visits:0,write_ups:0,trades:0};
-    reps.push({name:rep,total_leads:inPeriodLeads.length,valid_leads:validLeads.length,bad_leads:inPeriodLeads.length-validLeads.length,delivered:deliveries.length,conv_pct:validLeads.length?deliveries.length/validLeads.length:0,internet_leads:internet.length,med_adj_min:mA,speed_tier:speedTier,contact_rate:contactRate,multi_ch_rate:multiChRate,visits:vs.visits,write_ups:vs.write_ups,writeup_rate:vs.visits?vs.write_ups/vs.visits:0,trades:vs.trades,prior_period_deliveries:priorDels});
+    reps.push({name:rep,total_leads:inPeriodLeads.length,valid_leads:validLeads.length,bad_leads:inPeriodLeads.length-validLeads.length,delivered:deliveries.length,conv_pct:validLeads.length?deliveries.length/validLeads.length:0,internet_leads:internet.length,med_adj_min:mA,speed_tier:speedTier,contact_rate:contactRate,multi_ch_rate:multiChRate,visits:vs.visits,write_ups:vs.write_ups,writeup_rate:vs.visits?vs.write_ups/vs.visits:0,valid_to_visit_rate:validLeads.length?vs.visits/validLeads.length:0,trades:vs.trades,prior_period_deliveries:priorDels});
   });
   reps.sort((a,b)=>b.delivered-a.delivered||b.conv_pct-a.conv_pct);
   const totals={total_leads:reps.reduce((s,r)=>s+r.total_leads,0),valid_leads:reps.reduce((s,r)=>s+r.valid_leads,0),bad_leads:reps.reduce((s,r)=>s+r.bad_leads,0),delivered:reps.reduce((s,r)=>s+r.delivered,0),conv_pct:0,visits:reps.reduce((s,r)=>s+r.visits,0),write_ups:reps.reduce((s,r)=>s+r.write_ups,0),writeup_rate:0,rep_count:reps.length,internet_leads:reps.reduce((s,r)=>s+r.internet_leads,0)};
@@ -593,12 +619,25 @@ const _cmpSelected={};
 /* ═══════════════════════════════════════════════════════════════
    PERIOD UTILITIES
 ═══════════════════════════════════════════════════════════════ */
+const MONTH_NAME_MAP={
+  jan:'01',january:'01',feb:'02',february:'02',mar:'03',march:'03',
+  apr:'04',april:'04',may:'05',jun:'06',june:'06',jul:'07',july:'07',
+  aug:'08',august:'08',sep:'09',sept:'09',september:'09',oct:'10',
+  october:'10',nov:'11',november:'11',dec:'12',december:'12'
+};
 function periodFromFileName(name){
-  const m=String(name).match(/_(\d{2})_(\d{2})_(\d{2})\.csv$/i);
-  if(!m)return null;const[,dd,mm,yy]=m;return`20${yy}-${mm}`;
+  // Format 1: storename_dd_mm_yy.csv
+  const m1=String(name).match(/_(\d{2})_(\d{2})_(\d{2})\.csv$/i);
+  if(m1){const[,dd,mm,yy]=m1;return`20${yy}-${mm}`;}
+  // Format 2: storename_monthname_yy.csv  (e.g. hattiesburg_march_26.csv)
+  const m2=String(name).match(/_([a-z]+)_(\d{2})\.csv$/i);
+  if(m2){const[,mon,yy]=m2;const mm=MONTH_NAME_MAP[mon.toLowerCase()];if(mm)return`20${yy}-${mm}`;}
+  return null;
 }
 function periodLabel(period){
-  if(!period)return'—';const[year,month]=period.split('-');
+  if(!period)return'—';
+  if(period.startsWith('upload-'))return'Uploaded';
+  const[year,month]=period.split('-');
   const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return(months[parseInt(month,10)-1]||month)+' '+year;
 }
@@ -760,26 +799,51 @@ function renderContent(){
    OPTION A — SORTABLE REP TABLE
 ═══════════════════════════════════════════════════════════════ */
 function tableHTML(reps,totals){
-  const cols=[{k:'name',l:'Rep',r:false},{k:'total_leads',l:'Total Leads',r:true},{k:'valid_leads',l:'Valid',r:true},{k:'delivered',l:'Deliveries',r:true},{k:'conv_pct',l:'Conv%',r:true},{k:'med_adj_min',l:'Speed',r:true},{k:'contact_rate',l:'Contact%',r:true},{k:'multi_ch_rate',l:'Multi-Ch%',r:true},{k:'visits',l:'Visits',r:true},{k:'write_ups',l:'Write-ups',r:true},{k:'writeup_rate',l:'WU%',r:true}];
+  const cols=[
+    {k:'name',     l:'Rep',         r:false},
+    {k:'total_leads',l:'All Leads', r:true},
+    {k:'bad_leads',  l:'Bad Leads', r:true},
+    {k:'valid_leads',l:'Valid Leads',r:true},
+    {k:'visits',     l:'Visits',    r:true},
+    {k:'write_ups',  l:'Write-ups', r:true},
+    {k:'delivered',  l:'Deliveries',r:true},
+    {k:'conv_pct',   l:'Cov%',      r:true},
+    {k:'valid_to_visit_rate',l:'Vis%',r:true},
+    {k:'writeup_rate',l:'WU%',      r:true},
+  ];
   const thCls=c=>'sortable'+(c.r?' r':'')+(sortCol===c.k?' sort-'+sortDir:'');
   const thead=cols.map(c=>`<th class="${thCls(c)}" onclick="setSort('${c.k}')">${c.l}</th>`).join('');
   const sorted=sortedReps(reps);
-  const rows=sorted.map(r=>{const cc=convCls(r.conv_pct);return`<tr>
+  const rows=sorted.map(r=>{
+    const cc=convCls(r.conv_pct);
+    const vvr=r.valid_to_visit_rate!=null?r.valid_to_visit_rate:(r.valid_leads?r.visits/r.valid_leads:0);
+    return`<tr>
     <td class="nm">${r.name}</td>
-    <td class="r"><span class="leads-val">${r.total_leads}</span><span class="sub">${r.bad_leads?r.bad_leads+' bad':''}</span></td>
+    <td class="r"><span class="leads-val">${r.total_leads}</span></td>
+    <td class="r ${r.bad_leads>0?'cr':'cn'}">${r.bad_leads||'—'}</td>
     <td class="r">${r.valid_leads}</td>
-    <td class="r"><span class="del-val">${r.delivered}</span>${r.prior_period_deliveries?`<span class="sub">${r.prior_period_deliveries} prior</span>`:''}</td>
-    <td class="r"><span class="conv-val ${cc}">${r.valid_leads?pct(r.conv_pct):'—'}</span></td>
-    <td class="r">${fmtMin(r.med_adj_min)}&nbsp;${speedPill(r.speed_tier)}</td>
-    <td class="r ${r.contact_rate>=.8?'cg':r.contact_rate>=.5?'ca':'cr'}">${r.valid_leads?pct(r.contact_rate):'—'}</td>
-    <td class="r ${r.multi_ch_rate>=.5?'cg':r.multi_ch_rate>=.3?'ca':'cr'}">${r.valid_leads?pct(r.multi_ch_rate):'—'}</td>
     <td class="r">${r.visits}</td>
     <td class="r">${r.write_ups}</td>
+    <td class="r"><span class="del-val">${r.delivered}</span>${r.prior_period_deliveries?`<span class="sub">${r.prior_period_deliveries} prior</span>`:''}</td>
+    <td class="r"><span class="conv-val ${cc}">${r.valid_leads?pct(r.conv_pct):'—'}</span></td>
+    <td class="r ${vvr>=.5?'cg':vvr>=.25?'ca':'cr'}">${r.valid_leads?pct(vvr):'—'}</td>
     <td class="r ${r.writeup_rate>=.5?'cg':r.writeup_rate>=.3?'ca':'cr'}">${r.visits?pct(r.writeup_rate):'—'}</td>
   </tr>`;}).join('');
   const tc=convCls(totals.conv_pct);
-  const totRow=`<tr class="totals-row"><td class="nm">TOTALS</td><td class="r"><span class="leads-val">${totals.total_leads}</span></td><td class="r">${totals.valid_leads}</td><td class="r"><span class="del-val">${totals.delivered}</span></td><td class="r"><span class="conv-val ${tc}">${totals.valid_leads?pct(totals.conv_pct):'—'}</span></td><td class="r" colspan="3" style="color:var(--t3);font-family:var(--font);font-size:10px">${totals.internet_leads} internet leads · ${totals.rep_count} reps</td><td class="r">${totals.visits}</td><td class="r">${totals.write_ups}</td><td class="r">${totals.visits?pct(totals.writeup_rate):'—'}</td></tr>`;
-  return`<div class="tshell"><div class="tscroll"><table><thead><tr>${thead}</tr></thead><tbody>${rows}${totRow}</tbody></table></div></div><div style="font-size:10px;color:var(--t3);padding:4px 2px">Conv% = Deliveries ÷ Valid Leads · Leads filtered by Lead Origination Date · Deliveries filtered by Lead Last Modified Date · No lead minimum applied</div>`;
+  const totVVR=totals.valid_leads?totals.visits/totals.valid_leads:0;
+  const totRow=`<tr class="totals-row">
+    <td class="nm">TOTALS</td>
+    <td class="r"><span class="leads-val">${totals.total_leads}</span></td>
+    <td class="r">${totals.bad_leads||'—'}</td>
+    <td class="r">${totals.valid_leads}</td>
+    <td class="r">${totals.visits}</td>
+    <td class="r">${totals.write_ups}</td>
+    <td class="r"><span class="del-val">${totals.delivered}</span></td>
+    <td class="r"><span class="conv-val ${tc}">${totals.valid_leads?pct(totals.conv_pct):'—'}</span></td>
+    <td class="r">${totals.valid_leads?pct(totVVR):'—'}</td>
+    <td class="r">${totals.visits?pct(totals.writeup_rate):'—'}</td>
+  </tr>`;
+  return`<div class="tshell"><div class="tscroll"><table><thead><tr>${thead}</tr></thead><tbody>${rows}${totRow}</tbody></table></div></div><div style="font-size:10px;color:var(--t3);padding:4px 2px">Cov% = Deliveries ÷ Valid Leads &nbsp;·&nbsp; Vis% = Visits ÷ Valid Leads &nbsp;·&nbsp; WU% = Write-ups ÷ Visits &nbsp;·&nbsp; No lead minimum applied</div>`;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -787,7 +851,14 @@ function tableHTML(reps,totals){
 ═══════════════════════════════════════════════════════════════ */
 function summaryHTML(reps,totals,period){
   const cc=convCls(totals.conv_pct);
-  const strip=`<div class="kpi-strip"><div class="kpi"><div class="kpi-v b">${totals.total_leads}</div><div class="kpi-l">Total Leads</div><div class="kpi-s">${totals.bad_leads} bad status</div></div><div class="kpi"><div class="kpi-v">${totals.valid_leads}</div><div class="kpi-l">Valid Leads</div><div class="kpi-s">Excl. bad status</div></div><div class="kpi"><div class="kpi-v g">${totals.delivered}</div><div class="kpi-l">Deliveries</div><div class="kpi-s">Lead Last Modified Date</div></div><div class="kpi"><div class="kpi-v ${cc}">${totals.valid_leads?pct(totals.conv_pct):'—'}</div><div class="kpi-l">Conversion %</div><div class="kpi-s">Deliveries ÷ Valid Leads</div></div><div class="kpi"><div class="kpi-v">${totals.visits}</div><div class="kpi-l">Total Visits</div><div class="kpi-s">${totals.write_ups} write-ups · ${totals.visits?pct(totals.writeup_rate):'—'} WU%</div></div></div>`;
+  const sVVR=totals.valid_leads?totals.visits/totals.valid_leads:0;
+  const strip=`<div class="kpi-strip">
+    <div class="kpi"><div class="kpi-v b">${totals.total_leads}</div><div class="kpi-l">All Leads</div><div class="kpi-s">${totals.bad_leads} bad · ${totals.valid_leads} valid</div></div>
+    <div class="kpi"><div class="kpi-v">${totals.visits}</div><div class="kpi-l">Visits</div><div class="kpi-s">${totals.valid_leads?pct(sVVR):''} of valid leads</div></div>
+    <div class="kpi"><div class="kpi-v">${totals.write_ups}</div><div class="kpi-l">Write-ups</div><div class="kpi-s">${totals.visits?pct(totals.writeup_rate):'—'} WU%</div></div>
+    <div class="kpi"><div class="kpi-v g">${totals.delivered}</div><div class="kpi-l">Deliveries</div><div class="kpi-s">per Lead Last Modified Date</div></div>
+    <div class="kpi"><div class="kpi-v ${cc}">${totals.valid_leads?pct(totals.conv_pct):'—'}</div><div class="kpi-l">Cov%</div><div class="kpi-s">Deliveries ÷ Valid Leads</div></div>
+  </div>`;
   return strip+tableHTML(reps,totals);
 }
 
@@ -868,9 +939,8 @@ function processUpload(){
         // Cache in session (full rows, with PII)
         _sessionRows[`${storeId}_${period}`]={rows:parsed.rows,H:parsed.H};
 
-        // Build PII-stripped rows for server + localStorage
-        const deduped=dedupCustomers(parsed.rows,parsed.H);
-        const sanitized=deduped.map(r=>sanitizeRow(r,parsed.H));
+        // Build PII-stripped rows for server + localStorage (non-deduped so recompute works correctly)
+        const sanitized=parsed.rows.map(r=>sanitizeRow(r,parsed.H));
         cacheRows(storeId,period,{rows:sanitized,H:(()=>{const Hc={};for(const k of Object.keys(parsed.H)){if(k==='_piiCols')continue;if(typeof parsed.H[k]==='number'||k==='allHeaders')Hc[k]=parsed.H[k];}return Hc;})(),fileName:f.name,uploadedAt:new Date().toISOString()});
 
         // Update local cache
