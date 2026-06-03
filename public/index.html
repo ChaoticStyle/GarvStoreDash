@@ -1213,10 +1213,12 @@ async function deleteAllPeriods(){
   if(!confirm(`Final confirmation: permanently delete all ${periods.length} snapshot(s) for ${s?.name||curStore}?`))return;
   for(const p of [...periods]){
     if(HAS_BACKEND)await serverDeletePeriod(curStore,p.period);
-    removeFromLocalCache(curStore,p.period);
-    delete _sessionRows[`${curStore}_${p.period}`];
   }
-  delete _activePeriod[curStore];
+  // Wipe all localStorage keys for this store (catches orphaned/stale keys too)
+  const pfx=curStore+'_';
+  Object.keys(localStorage).filter(k=>k.startsWith('sdash_ci_'+curStore)||k.startsWith('sdash_cs_'+pfx)||k.startsWith('sdash_cr_'+pfx)).forEach(k=>localStorage.removeItem(k));
+  Object.keys(_sessionRows).filter(k=>k.startsWith(pfx)).forEach(k=>delete _sessionRows[k]);
+  delete _activePeriod[curStore];delete _cmpSelected[curStore];delete _cmpSort[curStore];
   toast(`All periods deleted for ${s?.name||curStore}`,'green');
   closeOv('ov-admin');buildRail();buildPage();
 }
@@ -1230,12 +1232,16 @@ async function deleteAllStoresData(){
     const periods=getStorePeriods(s.id);
     for(const p of [...periods]){
       if(HAS_BACKEND)await serverDeletePeriod(s.id,p.period);
-      removeFromLocalCache(s.id,p.period);
-      delete _sessionRows[`${s.id}_${p.period}`];
       deleted++;
     }
-    delete _activePeriod[s.id];
   }
+  // Wipe ALL sdash localStorage keys (catches orphaned/stale snapshots for any store)
+  Object.keys(localStorage).filter(k=>k.startsWith('sdash_')).forEach(k=>localStorage.removeItem(k));
+  Object.keys(_sessionRows).forEach(k=>delete _sessionRows[k]);
+  Object.keys(_activePeriod).forEach(k=>delete _activePeriod[k]);
+  Object.keys(_cmpSelected).forEach(k=>delete _cmpSelected[k]);
+  Object.keys(_cmpSort).forEach(k=>delete _cmpSort[k]);
+  curStore=STORES[0].id;
   toast(`Deleted ${deleted} snapshot(s) across all stores`,'green');
   closeOv('ov-admin');buildRail();buildPage();
 }
