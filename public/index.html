@@ -1273,10 +1273,10 @@ async function refreshFromServer(){
   if(liveStores.length>0){
     const firstMain=liveStores.find(s=>!s.isAirstream)||liveStores[0];
     curStore=firstMain.id;
-    await Promise.allSettled(liveStores.map(s=>{
-      const period=getStorePeriods(s.id)[0]?.period;
-      return period?fetchAndCacheSnap(s.id,period):Promise.resolve();
-    }));
+    // Fetch ALL period snapshots for every live store (not just the most recent)
+    await Promise.allSettled(liveStores.flatMap(s=>
+      getStorePeriods(s.id).map(p=>fetchAndCacheSnap(s.id,p.period))
+    ));
   }
   showSyncBadge(false);
   buildRail();buildPage();
