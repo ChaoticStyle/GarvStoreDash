@@ -667,6 +667,7 @@ let pending=[];
 let netPeriod='';
 const _activePeriod={};
 const _cmpSelected={};
+const _cmpSort={};
 
 /* ═══════════════════════════════════════════════════════════════
    PERIOD UTILITIES
@@ -1052,6 +1053,12 @@ function networkCardsHTML(np){
 /* ═══════════════════════════════════════════════════════════════
    OPTION C — PERIOD COMPARE
 ═══════════════════════════════════════════════════════════════ */
+function setCmpSort(storeId,period,col){
+  const cur=_cmpSort[storeId];
+  if(cur&&cur.period===period&&cur.col===col){_cmpSort[storeId]={period,col,dir:cur.dir==='desc'?'asc':'desc'};}
+  else{_cmpSort[storeId]={period,col,dir:col==='name'?'asc':'desc'};}
+  renderContent();
+}
 function compareHTML(storeId){
   const allPeriods=getStorePeriods(storeId);
   if(allPeriods.length<2){return`<div class="empty" style="min-height:280px"><div class="empty-ico">📅</div><div class="empty-t">Load Another Period</div><div class="empty-b">Load at least 2 monthly CSV files to compare periods side by side.</div><button class="btn btn-gold" onclick="openUpload()">↑ Load Period Data</button></div>`;}
@@ -1063,10 +1070,22 @@ function compareHTML(storeId){
   const periodData={};
   selPeriods.forEach(p=>{const snap=getPeriodSnapshot(storeId,p);if(snap)periodData[p]={reps:snap.reps,totals:snap.totals};});
   const allReps=new Set();Object.values(periodData).forEach(d=>d.reps.forEach(r=>allReps.add(r.name)));
-  const repNames=[...allReps].sort();
+  // Sort state — default: most recent period, delivered desc
+  const defaultPeriod=selPeriods[selPeriods.length-1];
+  const sort=_cmpSort[storeId]||{period:defaultPeriod,col:'delivered',dir:'desc'};
+  const sortedRepNames=[...allReps].sort((a,b)=>{
+    const dir=sort.dir==='desc'?-1:1;
+    if(sort.col==='name')return dir*a.localeCompare(b);
+    const da=periodData[sort.period];
+    const ra=da?.reps.find(r=>r.name===a);const rb=da?.reps.find(r=>r.name===b);
+    const va=ra?.[sort.col]??-Infinity;const vb=rb?.[sort.col]??-Infinity;
+    return dir*(va-vb);
+  });
+  const thSort=(p,col,label)=>{const active=sort.period===p&&sort.col===col;const cls='r sortable'+(active?' sort-'+sort.dir:'');return`<th class="${cls}" style="min-width:78px" onclick="setCmpSort('${storeId}','${p}','${col}')">${label}</th>`;};
+  const repThCls='sortable'+(sort.col==='name'?' sort-'+sort.dir:'');
   const colGroups=selPeriods.map((p,i)=>`<th class="cmp-period-hd ${i%2===0?'':'alt'}" colspan="3">${periodLabel(p)}</th>`);
-  const subHeaders=selPeriods.flatMap(()=>['<th class="r" style="min-width:78px">Leads</th>','<th class="r" style="min-width:78px">Delivered</th>','<th class="r" style="min-width:78px">Conv%</th>']);
-  const tableRows=repNames.map(name=>{
+  const subHeaders=selPeriods.flatMap(p=>[thSort(p,'total_leads','Leads'),thSort(p,'delivered','Delivered'),thSort(p,'conv_pct','Conv%')]);
+  const tableRows=sortedRepNames.map(name=>{
     const cells=selPeriods.map(p=>{const d=periodData[p];if(!d)return'<td class="r no-data">—</td><td class="r no-data">—</td><td class="r no-data">—</td>';const rep=d.reps.find(r=>r.name===name);if(!rep)return'<td class="r no-data">—</td><td class="r no-data">—</td><td class="r no-data">—</td>';const cc=convCls(rep.conv_pct);return`<td class="r">${rep.total_leads}</td><td class="r">${rep.delivered}</td><td class="r ${cc}">${rep.valid_leads?pct(rep.conv_pct):'—'}</td>`;}).join('');
     return`<tr><td class="nm">${name}</td>${cells}</tr>`;
   }).join('');
@@ -1087,7 +1106,7 @@ function compareHTML(storeId){
     }
   }
   const momSection=momCards?`<div style="margin-top:18px"><div class="mom-hd">&#9650; Month-over-Month Changes</div><div class="mom-strip">${momCards}</div></div>`:'';
-  return`<div style="padding-bottom:12px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px"><span style="font-size:9px;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase">Compare Periods</span><div class="cmp-checks">${checks}</div></div><div class="tshell"><div class="tscroll"><table><thead><tr><th rowspan="2" style="min-width:140px">Rep</th>${colGroups.join('')}</tr><tr>${subHeaders.join('')}</tr></thead><tbody>${tableRows}<tr class="totals-row"><td class="nm">TOTALS</td>${totalsCells}</tr></tbody></table></div></div><div style="font-size:10px;color:var(--t3);padding:4px 2px">Using all-data snapshots per period</div>${momSection}</div>`;
+  return`<div style="padding-bottom:12px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px"><span style="font-size:9px;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase">Compare Periods</span><div class="cmp-checks">${checks}</div></div><div class="tshell"><div class="tscroll"><table><thead><tr><th rowspan="2" class="${repThCls}" style="min-width:140px" onclick="setCmpSort('${storeId}','','name')">Rep</th>${colGroups.join('')}</tr><tr>${subHeaders.join('')}</tr></thead><tbody>${tableRows}<tr class="totals-row"><td class="nm">TOTALS</td>${totalsCells}</tr></tbody></table></div></div><div style="font-size:10px;color:var(--t3);padding:4px 2px">Using all-data snapshots per period</div>${momSection}</div>`;
 }
 function toggleCmpPeriod(storeId,period,checked){if(!_cmpSelected[storeId])_cmpSelected[storeId]=new Set();if(checked)_cmpSelected[storeId].add(period);else _cmpSelected[storeId].delete(period);renderContent();}
 
@@ -1253,10 +1272,10 @@ async function hydrate(){
   if(liveStores.length>0){
     const firstMain=liveStores.find(s=>!s.isAirstream)||liveStores[0];
     curStore=firstMain.id;
-    await Promise.allSettled(liveStores.map(s=>{
-      const period=getStorePeriods(s.id)[0]?.period;
-      return period?fetchAndCacheSnap(s.id,period):Promise.resolve();
-    }));
+    // Fetch ALL period snapshots so every period is immediately available on any browser
+    await Promise.allSettled(liveStores.flatMap(s=>
+      getStorePeriods(s.id).map(p=>fetchAndCacheSnap(s.id,p.period))
+    ));
   }
   showSyncBadge(false);
 }
