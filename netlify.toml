@@ -35,6 +35,11 @@
     Access-Control-Allow-Methods = "GET, POST, DELETE, OPTIONS"
     Access-Control-Allow-Headers = "Content-Type"
 
+[[redirects]]
+  from   = "/api/ai"
+  to     = "/.netlify/functions/ai-proxy"
+  status = 200
+
 # ─── SPA fallback ────────────────────────────────────────────
 [[redirects]]
   from   = "/*"
