@@ -216,6 +216,16 @@ td.delta-eq{color:var(--t3)}
 .spin{width:13px;height:13px;border:2px solid var(--rule2);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* AI COACH */
+.btn-ai{background:var(--p-bg);border-color:rgba(139,92,246,.3);color:var(--pur)}
+.btn-ai:hover{background:rgba(139,92,246,.14);border-color:rgba(139,92,246,.5)}
+.ai-prompt{display:flex;gap:7px;align-items:center;background:var(--card);border:1px solid var(--rule2);border-radius:var(--radius2);padding:9px 13px;margin-bottom:13px;transition:border-color .15s}
+.ai-prompt:focus-within{border-color:rgba(139,92,246,.4)}
+.ai-prompt input{flex:1;background:transparent;border:none;outline:none;font-family:var(--font);font-size:13px;color:var(--t0)}
+.ai-prompt input::placeholder{color:var(--t3)}
+.ai-think{display:none;align-items:center;gap:9px;padding:10px 14px;background:var(--card);border:1px solid var(--rule);border-radius:var(--radius2);font-size:12px;color:var(--t1);margin-bottom:10px}
+.ai-res{display:none;background:var(--card);border:1px solid var(--rule);border-radius:var(--radius2);padding:14px 16px;font-size:12px;color:var(--t1);line-height:1.8;white-space:pre-wrap;margin-bottom:11px;max-height:320px;overflow-y:auto}
+
 @media(max-width:1000px){.kpi-strip{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:760px){.kpi-strip{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:600px){.tb-row1,.ctx-bar,.vwrap{padding-left:14px;padding-right:14px}.store-rail{padding:0 14px}}
@@ -266,6 +276,7 @@ td.delta-eq{color:var(--t3)}
       <div id="sync-badge"><span class="sb-dot"></span>Syncing</div>
     </div>
     <div class="tb-actions">
+      <button class="btn btn-ai btn-sm" onclick="openAIModal()">&#10022; AI Coach</button>
       <button class="btn btn-ghost btn-sm" onclick="openAdmin()">&#9881; Admin</button>
       <input type="file" id="file-input-hidden" accept=".csv" multiple style="display:none" onchange="handleFiles(this.files)">
     </div>
@@ -333,12 +344,29 @@ td.delta-eq{color:var(--t3)}
   </div>
 </div>
 
+<!-- AI COACH MODAL -->
+<div class="ov" id="ov-ai" onclick="if(event.target===this)closeOv('ov-ai')">
+  <div class="modal md">
+    <button class="mcl" onclick="closeOv('ov-ai')">&#10005;</button>
+    <h2>&#10022; AI Coach</h2>
+    <p>Ask about any rep, trend, or coaching strategy. Uses live data from the currently viewed store and active date filter.</p>
+    <div class="ai-prompt" style="margin-bottom:10px">
+      <input id="ai-modal-inp" placeholder="e.g. 'What should reps focus on this week?' or 'Why is conversion dropping?'" onkeydown="if(event.key==='Enter')runAIModal()">
+      <button class="btn btn-ai" onclick="runAIModal()">&#10022; Ask</button>
+    </div>
+    <div class="ai-think" id="ai-modal-think"><div class="spin"></div> Analyzing team data…</div>
+    <div class="ai-res" id="ai-modal-res"></div>
+    <div class="mfoot"><button class="btn btn-ghost" onclick="closeOv('ov-ai')">Close</button></div>
+  </div>
+</div>
+
 <script>
 /* ═══════════════════════════════════════════════════════════════
    BACKEND CONFIG
 ═══════════════════════════════════════════════════════════════ */
 const BACKEND_URL = window.location.protocol === 'file:' ? '' : window.location.origin;
 const HAS_BACKEND = !!BACKEND_URL;
+const AI_PROXY = window.location.origin + '/api/ai';
 
 /* ═══════════════════════════════════════════════════════════════
    STORE REGISTRY
@@ -1126,6 +1154,70 @@ function handleFiles(files){
   document.getElementById('ul-flist').innerHTML=pending.map(f=>`<div class="fi" id="fi-${f.name.replace(/[^a-z0-9]/gi,'_')}"><span>📄</span><span class="fi-n">${f.name}</span><span class="fi-s">${(f.size/1024).toFixed(0)} KB</span><span id="fi-st-${f.name.replace(/[^a-z0-9]/gi,'_')}"></span></div>`).join('');
   document.getElementById('proc-btn').disabled=pending.length===0;
 }
+
+/* ══ AI COACH ════════════════════════════════════════════════ */
+function aiCtx(){
+  // Network tab: aggregate store-level totals across all stores with data
+  if(curStore==='network'){
+    const np=getNetPeriod();
+    const periodStr=np&&np!=='__all__'?periodLabel(np):'All Periods';
+    const storeRows=STORES.filter(s=>!s.isAirstream).map(s=>{
+      const snap=np==='__all__'
+        ?(()=>{const snaps=getStorePeriods(s.id).map(p=>getPeriodSnapshot(s.id,p.period)).filter(Boolean);return snaps.length?mergeSnapshotData(snaps):null;})()
+        :getPeriodSnapshot(s.id,np);
+      if(!snap)return null;
+      const t=snap.totals;
+      return`${s.name} | Del:${t.delivered} | Conv:${t.valid_leads?(t.conv_pct*100).toFixed(1)+'%':'n/a'} | ValidLeads:${t.valid_leads} | Visits:${t.visits} | WU%:${t.visits?(t.writeup_rate*100).toFixed(0)+'%':'n/a'}`;
+    }).filter(Boolean);
+    if(!storeRows.length)return'You are a dealership sales performance coach for Great American RV SuperStores Network.\nNo store data is currently loaded.';
+    return'You are a dealership sales performance coach for Great American RV SuperStores Network.\n'+
+      `Period: ${periodStr}. Filters: 700 Credit and Airstream leads removed; managers excluded.\n`+
+      'Metrics are store-level totals. Conv% = Deliveries ÷ Valid Leads. WU% = Write-ups ÷ Visits.\n'+
+      'NETWORK STORE TOTALS:\n'+
+      storeRows.join('\n')+
+      '\nGive specific, actionable network-level coaching. Highlight which stores need attention and why. Under 320 words. Clear paragraphs, not bullet walls.';
+  }
+  // Single store tab
+  const s=STORES.find(x=>x.id===curStore)||{name:'this location'};
+  const period=getActivePeriod(curStore);
+  const data=getLiveData(curStore,period)||{};
+  const reps=data.reps||[];
+  const filterActive=activeDR!=='all'||drFrom||drTo;
+  let periodStr=period?periodLabel(period):'Recent';
+  if(filterActive){
+    const labels={mtd:'Month to Date',last30:'Last 30 Days',last7:'Last 7 Days',custom:'Custom Range'};
+    periodStr=labels[activeDR]||'Custom Range';
+    if(drFrom||drTo)periodStr+=` (${drFrom||'…'} – ${drTo||'…'})`;
+  }
+  const intro=s.isAirstream
+    ?'You are a dealership sales performance coach for Great American RV SuperStores, analyzing the Airstream brand pipeline across all rooftops.'
+    :`You are a dealership sales performance coach for Great American RV SuperStores, ${s.name}.`;
+  const filtersLine=s.isAirstream
+    ?`Period: ${periodStr}. Filters: Airstream leads only; 700 Credit removed; managers excluded.`
+    :`Period: ${periodStr}. Filters: 700 Credit and Airstream leads removed; managers excluded.`;
+  if(!reps.length)return intro+'\n'+filtersLine+'\nNo rep data is currently loaded for this store.';
+  return intro+'\n'+
+    filtersLine+'\n'+
+    'Metrics: raw counts, no composite score. Speed scored on internet leads only (Adjusted Response Time). Conv% = Deliveries ÷ Valid Leads. WU% = Write-ups ÷ Visits.\n'+
+    'REP DATA (sorted by deliveries):\n'+
+    reps.map((r,i)=>{
+      const speed=r.med_adj_min!==null?`${r.speed_tier}(${r.med_adj_min}m)`:r.speed_tier;
+      return`${i+1}. ${r.name} | Del:${r.delivered} | Conv:${r.valid_leads?(r.conv_pct*100).toFixed(1)+'%':'n/a'} | ValidLeads:${r.valid_leads} | Internet:${r.internet_leads} | Speed:${speed} | Contact:${(r.contact_rate*100).toFixed(0)}% | MultiCh:${(r.multi_ch_rate*100).toFixed(0)}% | Visits:${r.visits} | WU%:${r.visits?(r.writeup_rate*100).toFixed(0)+'%':'n/a'}`;
+    }).join('\n')+
+    '\nGive specific, actionable coaching grounded in this data. Reference rep names and numbers. Under 320 words. Clear paragraphs, not bullet walls.';
+}
+async function callAI(q,tEl,rEl){
+  if(!AI_PROXY){rEl.textContent='AI proxy not configured.';rEl.style.display='block';return;}
+  tEl.style.display='flex';rEl.style.display='none';
+  try{
+    const res=await fetch(AI_PROXY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:600,system:aiCtx(),messages:[{role:'user',content:q}]})});
+    const data=await res.json();
+    rEl.textContent=data.content?.map(b=>b.text||'').join('')||'No response.';
+  }catch(e){rEl.textContent='Could not reach AI proxy. Check your proxy URL configuration.';}
+  tEl.style.display='none';rEl.style.display='block';
+}
+function runAIModal(){const q=document.getElementById('ai-modal-inp')?.value?.trim();if(q)callAI(q,document.getElementById('ai-modal-think'),document.getElementById('ai-modal-res'));}
+function openAIModal(){document.getElementById('ai-modal-inp').value='';document.getElementById('ai-modal-think').style.display='none';document.getElementById('ai-modal-res').style.display='none';openOv('ov-ai');}
 
 function processUpload(){
   if(!pending.length)return;
