@@ -13,6 +13,11 @@
   status = 200
 
 [[redirects]]
+  from   = "/api/store-ingest"
+  to     = "/.netlify/functions/store-ingest"
+  status = 200
+
+[[redirects]]
   from   = "/api/store/:id/period/:period/rows"
   to     = "/.netlify/functions/period-rows"
   status = 200
