@@ -142,6 +142,7 @@ function parseMasterCSVv2(txt) {
   H.VISIT_RESULT      = H['Visit Result'];
   H.WRITE_UP          = H['Write Up'];
   H.TRADE_APP         = H['Trade Appraisal'];
+  H.VISIT_START       = H['Visit Start Date'];
   return { rows: rows.slice(1).filter(r => r.length > 1), H };
 }
 
@@ -216,23 +217,24 @@ function recomputeRaw(rows, H, storeId, fromStr, toStr) {
     return true;
   });
 
+  const { leads: dedup, extraSales } = dedupCustomers(filtered, H);
+  const fromMs = fromStr ? new Date(fromStr).getTime() : null;
+  const toMs   = toStr   ? new Date(toStr).setHours(23, 59, 59, 999) : null;
+  const inRange = ms => { if (isNaN(ms)) return false; if (fromMs !== null && ms < fromMs) return false; if (toMs !== null && ms > toMs) return false; return true; };
+  const noFilter = (fromMs === null && toMs === null);
+
   const visitStats = {};
   filtered.forEach(r => {
     const vid = (r[H.VISIT_ID] || '').trim(); if (!vid) return;
     if ((r[H.VISIT_RESULT] || '').trim() === 'Deleted') return;
     const ag  = (r[H.ASSIGNED_GROUP] || '').trim(); if (MGR_GROUPS.has(ag)) return;
     const rep = (r[H.SALES_REP]      || '').trim(); if (!rep) return;
+    if (!noFilter) { const vStartMs = Date.parse(r[H.VISIT_START] || ''); if (!inRange(vStartMs)) return; }
     const s   = visitStats[rep] = visitStats[rep] || { visits: 0, write_ups: 0, trades: 0 };
     s.visits++;
     if ((r[H.WRITE_UP]  || '').trim() === 'Y') s.write_ups++;
     if ((r[H.TRADE_APP] || '').trim() === 'Y') s.trades++;
   });
-
-  const { leads: dedup, extraSales } = dedupCustomers(filtered, H);
-  const fromMs = fromStr ? new Date(fromStr).getTime() : null;
-  const toMs   = toStr   ? new Date(toStr).setHours(23, 59, 59, 999) : null;
-  const inRange = ms => { if (isNaN(ms)) return false; if (fromMs !== null && ms < fromMs) return false; if (toMs !== null && ms > toMs) return false; return true; };
-  const noFilter = (fromMs === null && toMs === null);
 
   const classified = dedup.map(r => {
     const origMs = Date.parse(r[H.LEAD_ORIG] || '');
