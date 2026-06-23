@@ -19,18 +19,50 @@ const PII_COLS = [
   'Cell Phone', 'Evening Phone',
 ];
 
+const normPhone = p => { const d = String(p||'').replace(/\D/g,''); const s = d.length===11&&d.startsWith('1')?d.slice(1):d; return s.length===10?s:''; };
+const normEmail = e => { const s = String(e||'').trim().toLowerCase(); return s.includes('@')?s:''; };
+const normCust  = c => String(c||'').trim().toLowerCase().replace(/\s+/g,' ');
+
+// Deterministic, salted hash so dedup matching (same Customer/Email/Phone => same
+// customer) still works on the PII-stripped rows blob — this is a defense-in-depth
+// re-strip in case a client ever sends raw PII; the browser already hashes before
+// POSTing, so re-hashing here is idempotent for compliant clients. Fresh salt per
+// request, since dedup only needs to match within one period's own rows.
+function makeDedupHasher() {
+  const salt = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  return v => {
+    const s = salt + '|' + String(v || '');
+    let h1 = 0x811c9dc5, h2 = 0x1b873593;
+    for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); h1 = Math.imul(h1 ^ c, 16777619) >>> 0; h2 = Math.imul(h2 ^ c, 2246822519) >>> 0; }
+    return h1.toString(36) + h2.toString(36);
+  };
+}
+function hashPhoneDigits(hash, raw) {
+  const ph = normPhone(raw); if (!ph) return '';
+  const h = hash(ph); let n = 0; for (let i = 0; i < h.length; i++) n = (n * 31 + h.charCodeAt(i)) >>> 0;
+  return String(n).padStart(10, '0').slice(-10);
+}
+
 function restrip(payload) {
   if (!payload?.rows || !payload?.H) return payload;
-  const headers = Array.isArray(payload.H.allHeaders) ? payload.H.allHeaders : [];
+  const H = payload.H;
+  const headers = Array.isArray(H.allHeaders) ? H.allHeaders : [];
   const pii = new Set();
   headers.forEach((h, i) => { if (PII_COLS.includes(String(h || '').trim())) pii.add(i); });
-  PII_COLS.forEach(n => { if (typeof payload.H[n] === 'number') pii.add(payload.H[n]); });
+  PII_COLS.forEach(n => { if (typeof H[n] === 'number') pii.add(H[n]); });
   if (!pii.size) return payload;
+  const hash = makeDedupHasher();
   return {
     ...payload,
     rows: payload.rows.map(row => {
       const out = row.slice();
-      pii.forEach(i => { if (i >= 0 && i < out.length) out[i] = ''; });
+      pii.forEach(i => {
+        if (i < 0 || i >= out.length) return;
+        if (i === H.CUSTOMER) { const nm = normCust(out[i]); out[i] = nm ? hash(nm) : ''; }
+        else if (i === H.EMAIL) { const em = normEmail(out[i]); out[i] = em ? hash(em) + '@h' : ''; }
+        else if (i === H.DAY_PHONE || i === H.EVE_PHONE || i === H.CELL_PHONE) { out[i] = hashPhoneDigits(hash, out[i]); }
+        else out[i] = '';
+      });
       return out;
     }),
   };
