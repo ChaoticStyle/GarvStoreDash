@@ -147,7 +147,21 @@ tbody tr:last-child{border-bottom:none}
 td{padding:8px 11px;font-family:var(--mono);font-size:11px;color:var(--t1)}
 td.nm{font-family:var(--font);font-size:12px;font-weight:500;color:var(--t0)}
 td.r{text-align:right}
-td.sub{display:block;font-size:9px;color:var(--t3);font-weight:400;letter-spacing:.4px;margin-top:1px}
+.sub{display:block;font-size:9px;color:var(--t3);font-weight:400;letter-spacing:.4px;margin-top:1px}
+.sub.tip{cursor:help;border-bottom:1px dotted var(--t3);display:inline-block;position:relative}
+.sub.tip:hover{color:var(--t1)}
+.sub.tip:hover::after{
+  content:attr(data-tip);position:absolute;left:0;top:calc(100% + 7px);z-index:60;
+  width:220px;white-space:normal;text-align:left;
+  background:var(--ink2);border:1px solid var(--rule2);border-radius:6px;
+  padding:8px 10px;font-family:var(--font);font-size:11px;font-weight:400;
+  letter-spacing:normal;text-transform:none;color:var(--t0);line-height:1.5;
+  box-shadow:0 10px 28px rgba(0,0,0,.5);
+}
+.sub.tip:hover::before{
+  content:'';position:absolute;left:8px;top:100%;z-index:61;
+  border:5px solid transparent;border-bottom-color:var(--rule2);
+}
 .cg{color:var(--grn)}.ca{color:var(--gold)}.cr{color:var(--red)}.cn{color:var(--t3)}
 .conv-val{font-family:var(--disp);font-size:15px}
 .del-val{font-family:var(--disp);font-size:15px;color:var(--grn)}
@@ -516,7 +530,37 @@ function piiColIndexes(H){
   if(H.allHeaders){for(let i=0;i<H.allHeaders.length;i++){if(PII_COL_HEADERS.includes(H.allHeaders[i]))cols.add(i);}}
   H._piiCols=cols;return cols;
 }
-function sanitizeRow(row,H){const cols=piiColIndexes(H);if(!cols.size)return row.slice();const out=row.slice();for(const i of cols)out[i]='';return out;}
+// Deterministic, salted hash so dedup matching (same Customer/Email/Phone => same
+// customer) still works after PII is stripped from the rows sent to the server — the
+// real value never leaves the browser, but rows sharing the same real value still
+// produce the same hash and dedupe together. Salt is fresh per upload, so the same
+// real customer hashes differently in a different month's file (dedup only needs to
+// match within one period's own rows, never across periods).
+function makeDedupHasher(){
+  const salt=Math.random().toString(36).slice(2)+Date.now().toString(36);
+  return v=>{
+    const s=salt+'|'+String(v||'');
+    let h1=0x811c9dc5,h2=0x1b873593;
+    for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);h1=Math.imul(h1^c,16777619)>>>0;h2=Math.imul(h2^c,2246822519)>>>0;}
+    return h1.toString(36)+h2.toString(36);
+  };
+}
+function hashPhoneDigits(hash,raw){
+  const ph=normPhone(raw);if(!ph)return'';
+  const h=hash(ph);let n=0;for(let i=0;i<h.length;i++)n=(n*31+h.charCodeAt(i))>>>0;
+  return String(n).padStart(10,'0').slice(-10);
+}
+function sanitizeRow(row,H,hash){
+  const cols=piiColIndexes(H);if(!cols.size)return row.slice();
+  const out=row.slice();
+  for(const i of cols){
+    if(i===H.CUSTOMER){const nm=normCust(out[i]);out[i]=nm?hash(nm):'';}
+    else if(i===H.EMAIL){const em=normEmail(out[i]);out[i]=em?hash(em)+'@h':'';}
+    else if(i===H.DAY_PHONE||i===H.EVE_PHONE||i===H.CELL_PHONE){out[i]=hashPhoneDigits(hash,out[i]);}
+    else out[i]='';
+  }
+  return out;
+}
 
 /* ═══════════════════════════════════════════════════════════════
    RAW SCORING — no lead minimum, no composite weights
@@ -684,12 +728,16 @@ function removeFromLocalCache(id,period){
   cacheIndex(id,idx);
   _lsSet(`cs_${id}_${period}`,null);
   _lsSet(`cr_${id}_${period}`,null);
+  _rowsFetchFailed.delete(`${id}_${period}`);
+  _rowsFetchInFlight.delete(`${id}_${period}`);
 }
 
 /* ═══════════════════════════════════════════════════════════════
    SESSION STATE
 ═══════════════════════════════════════════════════════════════ */
 const _sessionRows={};
+const _rowsFetchFailed=new Set();   // `${id}_${period}` keys where a rows fetch was attempted and came back empty
+const _rowsFetchInFlight=new Set(); // `${id}_${period}` keys currently being fetched, to avoid duplicate requests
 let curStore=STORES[0].id;
 let curView='table';
 let activeDR='all',drFrom='',drTo='';
@@ -731,18 +779,40 @@ function setActivePeriod(id,period){_activePeriod[id]=period;}
 /* ═══════════════════════════════════════════════════════════════
    DATE RANGE
 ═══════════════════════════════════════════════════════════════ */
-function getEffectiveDateFrom(){
-  if(drFrom)return drFrom;const now=new Date();
-  if(activeDR==='mtd')return now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-01';
-  if(activeDR==='last30'){const d=new Date(now-30*864e5);return d.toISOString().slice(0,10);}
-  if(activeDR==='last7'){const d=new Date(now-7*864e5);return d.toISOString().slice(0,10);}
+// "As of" date for MTD/Last30/Last7, relative to the period being viewed —
+// real wall-clock "today" only applies while viewing the actual current month;
+// for any other (historical) period it anchors to that period's own last data date,
+// so MTD/Last30/Last7 don't compare a past month against today's real date.
+function periodAsOfDate(id,period){
+  const now=new Date();
+  const todayStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  const realPeriod=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  if(!period||period===realPeriod)return todayStr;
+  const snap=getPeriodSnapshot(id,period);
+  const rawDates=snap&&snap._rawDates;
+  if(rawDates&&rawDates.length)return rawDates[rawDates.length-1];
+  const m=/^(\d{4})-(\d{2})$/.exec(period);
+  if(m){const y=+m[1],mo=+m[2];const lastDay=new Date(y,mo,0).getDate();return y+'-'+String(mo).padStart(2,'0')+'-'+String(lastDay).padStart(2,'0');}
+  return todayStr;
+}
+function getEffectiveDateFrom(id,period){
+  if(drFrom)return drFrom;
+  const asOf=periodAsOfDate(id,period);
+  if(activeDR==='mtd')return asOf.slice(0,7)+'-01';
+  if(activeDR==='last30'){const d=new Date(new Date(asOf+'T00:00:00').getTime()-30*864e5);return d.toISOString().slice(0,10);}
+  if(activeDR==='last7'){const d=new Date(new Date(asOf+'T00:00:00').getTime()-7*864e5);return d.toISOString().slice(0,10);}
   return'';
 }
-function getEffectiveDateTo(){return drTo||'';}
+function getEffectiveDateTo(id,period){
+  if(drTo)return drTo;
+  if(activeDR==='mtd'||activeDR==='last30'||activeDR==='last7')return periodAsOfDate(id,period);
+  return'';
+}
 
 /* ═══════════════════════════════════════════════════════════════
    HELPERS
 ═══════════════════════════════════════════════════════════════ */
+const PRIOR_TIP='Deliveries in this window whose lead didn&#8217;t originate here &#8212; carried over from an earlier period, or an extra unit sold to a customer already counted elsewhere.';
 const pct=v=>(v*100).toFixed(1)+'%';
 const fmtMin=v=>{if(v===null||v===undefined)return'N/A';if(v===0)return'<1m';if(v<60)return Math.round(v)+'m';return(v/60).toFixed(1)+'h';};
 const convCls=v=>v>=.20?'cg':v>=.10?'ca':'cr';
@@ -787,9 +857,9 @@ function getLiveData(id,period){
   const filterActive=activeDR!=='all'||drFrom||drTo;
   if(filterActive){
     const sk=`${id}_${period}`;
-    if(_sessionRows[sk])return recomputeRaw(_sessionRows[sk].rows,_sessionRows[sk].H,id,getEffectiveDateFrom(),getEffectiveDateTo());
+    if(_sessionRows[sk])return recomputeRaw(_sessionRows[sk].rows,_sessionRows[sk].H,id,getEffectiveDateFrom(id,period),getEffectiveDateTo(id,period));
     const cached=getCachedRows(id,period);
-    if(cached?.rows&&cached?.H)return recomputeRaw(cached.rows,cached.H,id,getEffectiveDateFrom(),getEffectiveDateTo());
+    if(cached?.rows&&cached?.H)return recomputeRaw(cached.rows,cached.H,id,getEffectiveDateFrom(id,period),getEffectiveDateTo(id,period));
   }
   const snap=getPeriodSnapshot(id,period);
   return snap?{reps:snap.reps,totals:snap.totals,_rawDates:snap._rawDates,_noRows:filterActive&&!hasRowSource(id,period)}:null;
@@ -860,7 +930,6 @@ function buildPage(){
   const minDate=rawDates.length?rawDates[0]:'';
   const maxDate=rawDates.length?rawDates[rawDates.length-1]:'';
   const filterActive=!isAllPeriods&&(activeDR!=='all'||drFrom||drTo);
-  const noRowSrc=filterActive&&!hasRowSource(curStore,activePeriod);
   const allOpt=`<option value="__all__"${isAllPeriods?' selected':''}>All Periods (${periods.length})</option>`;
   const perOptions=allOpt+periods.map(p=>`<option value="${p.period}"${p.period===activePeriod?' selected':''}>${periodLabel(p.period)} · ${p.fileName||p.period}</option>`).join('');
   const presets=['all','mtd','last30','last7'];
@@ -868,7 +937,10 @@ function buildPage(){
   const drBtns=presets.map(q=>`<button class="dr-btn${activeDR===q?' active':''}" data-dr="${q}" onclick="setDR('${q}')">${pLabels[q]}</button>`).join('');
   const views=[{k:'table',l:'Rep Table'},{k:'summary',l:'Summary'},{k:'compare',l:'Compare'}];
   const viewBtns=views.map(v=>`<button class="vp-btn${curView===v.k?' active':''}" data-view="${v.k}" onclick="setView('${v.k}')">${v.l}</button>`).join('');
-  const dateControls=isAllPeriods?'':`<div class="ctrl-sep"></div><span class="ctrl-lbl">Date</span>${drBtns}<div class="ctrl-sep"></div><div class="dr-dates"><input type="date" class="dr-input" id="dr-from" value="${drFrom}"${minDate?` min="${minDate}"`:''}${maxDate?` max="${maxDate}"`:''}  onchange="applyCustomRange()"><span class="dr-to">–</span><input type="date" class="dr-input" id="dr-to" value="${drTo}"${minDate?` min="${minDate}"`:''}${maxDate?` max="${maxDate}"`:''}  onchange="applyCustomRange()"></div>${filterActive?'<button class="dr-clear" onclick="clearDR()">× Clear</button>':''}${noRowSrc?'<span class="dr-warn">⚠ Re-upload to date filter</span>':''}`;
+  // dr-warn-badge starts hidden and is toggled live by renderContent()/updateRowWarning() —
+  // computing its visibility once here (at buildPage time) doesn't work because buildPage()
+  // only runs right after changePeriod(), which has just reset the date filter to "all".
+  const dateControls=isAllPeriods?'':`<div class="ctrl-sep"></div><span class="ctrl-lbl">Date</span>${drBtns}<div class="ctrl-sep"></div><div class="dr-dates"><input type="date" class="dr-input" id="dr-from" value="${drFrom}"${minDate?` min="${minDate}"`:''}${maxDate?` max="${maxDate}"`:''}  onchange="applyCustomRange()"><span class="dr-to">–</span><input type="date" class="dr-input" id="dr-to" value="${drTo}"${minDate?` min="${minDate}"`:''}${maxDate?` max="${maxDate}"`:''}  onchange="applyCustomRange()"></div>${filterActive?'<button class="dr-clear" onclick="clearDR()">× Clear</button>':''}<span class="dr-warn" id="dr-warn-badge" style="display:none"></span>`;
   pg.innerHTML=
     `<div class="ctx-bar">
       <div class="ctx-l">
@@ -893,6 +965,13 @@ function buildPage(){
 /* ═══════════════════════════════════════════════════════════════
    RENDER CONTENT
 ═══════════════════════════════════════════════════════════════ */
+function updateRowWarning(state){
+  const badge=document.getElementById('dr-warn-badge');
+  if(!badge)return;
+  if(state==='loading'){badge.textContent='⏳ Loading date-filtered data…';badge.style.display='inline-flex';}
+  else if(state==='unavailable'){badge.textContent='⚠ Date filtering unavailable for this period';badge.style.display='inline-flex';}
+  else badge.style.display='none';
+}
 function renderContent(){
   const wrap=document.getElementById('content-wrap');if(!wrap)return;
   const period=getActivePeriod(curStore);if(!period){wrap.innerHTML=emptyHTML(STORES.find(x=>x.id===curStore));return;}
@@ -900,10 +979,33 @@ function renderContent(){
   if(!data||!data.reps){wrap.innerHTML='<div style="padding:40px;color:var(--t3);text-align:center">No data — select a period or upload a CSV.</div>';return;}
   const tag=document.getElementById('rep-count-tag');
   if(tag)tag.textContent=`${data.totals.rep_count} rep${data.totals.rep_count!==1?'s':''}`;
-  // If filter active but no rows, background-fetch rows then re-render
+
+  // A date filter is active but row-level data isn't cached yet — never silently render
+  // the unfiltered period under a filtered label. Show a loading/unavailable state instead
+  // until row data is confirmed present or confirmed missing.
   if(data._noRows&&HAS_BACKEND){
-    fetchAndCacheRows(curStore,period).then(rows=>{if(rows)renderContent();});
+    const sk=`${curStore}_${period}`;
+    if(_rowsFetchFailed.has(sk)){
+      updateRowWarning('unavailable');
+      const notice=`<div style="margin-bottom:10px;padding:8px 12px;background:var(--g-bg);border:1px solid var(--g-bd);border-radius:var(--radius);font-size:11px;color:var(--gold)">⚠ Date filtering isn't available for this period — no row-level data was found on the server, so this is the full, unfiltered period instead. Re-uploading this month's CSV will enable date filtering.</div>`;
+      const body=curView==='table'?tableHTML(data.reps,data.totals):curView==='summary'?summaryHTML(data.reps,data.totals,period):compareHTML(curStore);
+      wrap.innerHTML=notice+body;
+      return;
+    }
+    updateRowWarning('loading');
+    wrap.innerHTML='<div style="padding:48px;text-align:center"><div class="spin" style="width:20px;height:20px;margin:auto"></div><div style="color:var(--t3);margin-top:12px;font-size:11px">Applying date filter…</div></div>';
+    if(!_rowsFetchInFlight.has(sk)){
+      _rowsFetchInFlight.add(sk);
+      fetchAndCacheRows(curStore,period).then(rows=>{
+        _rowsFetchInFlight.delete(sk);
+        if(!rows)_rowsFetchFailed.add(sk);
+        if(document.getElementById('content-wrap'))renderContent();
+      });
+    }
+    return;
   }
+
+  updateRowWarning('ok');
   if(curView==='table')wrap.innerHTML=tableHTML(data.reps,data.totals);
   else if(curView==='summary')wrap.innerHTML=summaryHTML(data.reps,data.totals,period);
   else wrap.innerHTML=compareHTML(curStore);
@@ -938,7 +1040,7 @@ function tableHTML(reps,totals){
     <td class="r">${r.valid_leads}</td>
     <td class="r">${r.visits}</td>
     <td class="r">${r.write_ups}</td>
-    <td class="r"><span class="del-val">${r.delivered}</span>${r.prior_period_deliveries?`<span class="sub">${r.prior_period_deliveries} prior</span>`:''}</td>
+    <td class="r"><span class="del-val">${r.delivered}</span>${r.prior_period_deliveries?`<span class="sub tip" data-tip="${PRIOR_TIP}">${r.prior_period_deliveries} prior</span>`:''}</td>
     <td class="r"><span class="conv-val ${cc}">${r.valid_leads?pct(r.conv_pct):'—'}</span></td>
     <td class="r ${vvr>=.5?'cg':vvr>=.25?'ca':'cr'}">${r.valid_leads?pct(vvr):'—'}</td>
     <td class="r ${r.writeup_rate>=.5?'cg':r.writeup_rate>=.3?'ca':'cr'}">${r.visits?pct(r.writeup_rate):'—'}</td>
@@ -1252,8 +1354,10 @@ function processUpload(){
         _sessionRows[`${storeId}_${period}`]={rows:parsed.rows,H:parsed.H};
 
         // Build PII-stripped rows for server + localStorage (non-deduped so recompute works correctly)
-        const sanitized=parsed.rows.map(r=>sanitizeRow(r,parsed.H));
+        const dedupHash=makeDedupHasher();
+        const sanitized=parsed.rows.map(r=>sanitizeRow(r,parsed.H,dedupHash));
         cacheRows(storeId,period,{rows:sanitized,H:(()=>{const Hc={};for(const k of Object.keys(parsed.H)){if(k==='_piiCols')continue;if(typeof parsed.H[k]==='number'||k==='allHeaders')Hc[k]=parsed.H[k];}return Hc;})(),fileName:f.name,uploadedAt:new Date().toISOString()});
+        _rowsFetchFailed.delete(`${storeId}_${period}`);
 
         // Update local cache
         updateLocalAfterUpload(storeId,period,label,f.name,result);
@@ -1387,6 +1491,7 @@ async function refreshFromServer(){
   // Clear cached indexes and snapshots (keep rows — they are large and rarely change)
   Object.keys(localStorage).filter(k=>k.startsWith('sdash_ci_')||k.startsWith('sdash_cs_')).forEach(k=>localStorage.removeItem(k));
   Object.keys(_activePeriod).forEach(k=>delete _activePeriod[k]);
+  _rowsFetchFailed.clear(); // give periods that previously had no row data another chance
   // Re-fetch everything fresh
   await Promise.allSettled(STORES.map(s=>fetchAndCacheIndex(s.id)));
   const liveStores=STORES.filter(s=>getStorePeriods(s.id).length>0);
