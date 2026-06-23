@@ -353,7 +353,27 @@ function recomputeRaw(rows, H, storeId, fromStr, toStr) {
 
 // ── PII strip for rows blob ───────────────────────────────────────────
 
-function stripPii(rows, H) {
+// Deterministic, salted hash so dedup matching (same Customer/Email/Phone => same
+// customer) still works on the PII-stripped rows blob used for client-side date-range
+// re-filtering. Salt is fresh per ingestion call, so the same real customer hashes
+// differently in a different month's upload — dedup only needs to match within one
+// period's own rows, never across periods.
+function makeDedupHasher() {
+  const salt = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  return v => {
+    const s = salt + '|' + String(v || '');
+    let h1 = 0x811c9dc5, h2 = 0x1b873593;
+    for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); h1 = Math.imul(h1 ^ c, 16777619) >>> 0; h2 = Math.imul(h2 ^ c, 2246822519) >>> 0; }
+    return h1.toString(36) + h2.toString(36);
+  };
+}
+function hashPhoneDigits(hash, raw) {
+  const ph = normPhone(raw); if (!ph) return '';
+  const h = hash(ph); let n = 0; for (let i = 0; i < h.length; i++) n = (n * 31 + h.charCodeAt(i)) >>> 0;
+  return String(n).padStart(10, '0').slice(-10);
+}
+
+function stripPii(rows, H, hash) {
   const pii = new Set();
   if (H.allHeaders) {
     H.allHeaders.forEach((h, i) => { if (PII_COL_HEADERS.includes(String(h || '').trim())) pii.add(i); });
@@ -362,7 +382,13 @@ function stripPii(rows, H) {
   if (!pii.size) return rows;
   return rows.map(row => {
     const out = row.slice();
-    pii.forEach(i => { if (i >= 0 && i < out.length) out[i] = ''; });
+    pii.forEach(i => {
+      if (i < 0 || i >= out.length) return;
+      if (i === H.CUSTOMER) { const nm = normCust(out[i]); out[i] = nm ? hash(nm) : ''; }
+      else if (i === H.EMAIL) { const em = normEmail(out[i]); out[i] = em ? hash(em) + '@h' : ''; }
+      else if (i === H.DAY_PHONE || i === H.EVE_PHONE || i === H.CELL_PHONE) { out[i] = hashPhoneDigits(hash, out[i]); }
+      else out[i] = '';
+    });
     return out;
   });
 }
@@ -451,7 +477,7 @@ export default async (req) => {
   }
 
   try {
-    const cleanRows = stripPii(rows, H);
+    const cleanRows = stripPii(rows, H, makeDedupHasher());
     await store.setJSON(`rows_${storeId}_${period}`, {
       rows:       cleanRows,
       H:          serializeH(H),
