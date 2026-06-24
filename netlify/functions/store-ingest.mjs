@@ -73,6 +73,7 @@ const BLACKLIST = new Set([
   'Tyler Zimmerman','Ed Savage','Joe Steffen','Joshua Brevick',
   'James Duos','Justin Mire','James Murphy','Tommy Sacran',
   'Jerry Jones','Chris Seehorn','Matthew Kramer','Mike Lindemood',
+  'Michael Lindemood',
   'Steve Smith','Bradley Smart','Matthew Justice','John Schuster',
 ].map(normName));
 const SYS_PATTERNS = ['your friends at great american rv', 'yod house agent'];
@@ -218,8 +219,12 @@ function recomputeRaw(rows, H, storeId, fromStr, toStr) {
   });
 
   const { leads: dedup, extraSales } = dedupCustomers(filtered, H);
-  const fromMs = fromStr ? new Date(fromStr).getTime() : null;
-  const toMs   = toStr   ? new Date(toStr).setHours(23, 59, 59, 999) : null;
+  // Date-only strings parse as UTC midnight per spec, then .setHours() mutates in
+  // local time — on a timezone behind UTC this silently lands toMs on the PREVIOUS
+  // local day's end of day, dropping the entire last day of a bounded range.
+  // Appending an explicit local time avoids the UTC round-trip entirely.
+  const fromMs = fromStr ? new Date(fromStr + 'T00:00:00.000').getTime() : null;
+  const toMs   = toStr   ? new Date(toStr   + 'T23:59:59.999').getTime() : null;
   const inRange = ms => { if (isNaN(ms)) return false; if (fromMs !== null && ms < fromMs) return false; if (toMs !== null && ms > toMs) return false; return true; };
   const noFilter = (fromMs === null && toMs === null);
 
