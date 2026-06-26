@@ -24,6 +24,11 @@ export default async (req) => {
   const store = getStore('sdash');
 
   if (req.method === 'DELETE') {
+    const expectedPassword = process.env.DASHBOARD_PASSWORD;
+    const suppliedPassword = new URL(req.url).searchParams.get('password');
+    if (expectedPassword && suppliedPassword !== expectedPassword) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401, headers: CORS });
+    }
     try {
       await Promise.allSettled([
         store.delete(`snap_${id}_${period}`),
