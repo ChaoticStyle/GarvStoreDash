@@ -74,7 +74,7 @@ const BLACKLIST = new Set([
   'James Duos','Justin Mire','James Murphy','Tommy Sacran',
   'Jerry Jones','Chris Seehorn','Matthew Kramer','Mike Lindemood',
   'Michael Lindemood',
-  'Steve Smith','Bradley Smart','Matthew Justice','John Schuster',
+  'Steve Smith','Bradley Smart','John Schuster',
 ].map(normName));
 const SYS_PATTERNS = ['your friends at great american rv', 'yod house agent'];
 const MGR_GROUPS   = new Set(['Manager', 'Reception', 'Admin']);
