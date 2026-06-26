@@ -328,30 +328,43 @@ td.delta-eq{color:var(--t3)}
   <div class="modal md">
     <button class="mcl" onclick="closeOv('ov-admin')">&#10005;</button>
     <h2>&#9881; Admin Actions</h2>
-    <div style="margin-bottom:14px">
-      <div style="font-size:9px;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px">Manage Periods — <strong id="admin-store-name" style="color:var(--t1);font-weight:600;text-transform:none;letter-spacing:0">—</strong></div>
-      <p style="margin-bottom:8px">Deleting removes data from the server for all users.</p>
-      <ul class="per-list" id="manage-list"></ul>
-      <button class="btn btn-gold btn-sm" onclick="closeOv('ov-admin');openUpload()">&#8679; Load Another Period</button>
+
+    <div id="admin-lock" style="display:none">
+      <p>Admin actions are password protected. Enter the password to continue.</p>
+      <form id="admin-lock-form" style="display:flex;gap:8px">
+        <input type="password" id="admin-lock-input" placeholder="Password" autocomplete="off">
+        <button type="submit" class="btn btn-gold btn-sm">Unlock</button>
+      </form>
+      <div id="admin-lock-error" style="color:var(--red);font-size:11px;margin-top:6px"></div>
     </div>
-    <div style="height:1px;background:var(--rule2);margin:16px 0"></div>
-    <div>
-      <div style="font-size:9px;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px">Sync</div>
-      <p style="margin-bottom:10px;color:var(--t2)">Force a full re-fetch from the server so all browsers see the same data. Or wipe the local browser cache entirely.</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-purple btn-sm" onclick="refreshFromServer()">&#8635; Refresh from Server</button>
-        <button class="btn btn-gold-outline btn-sm" onclick="clearLocalCache()">&#128465; Clear Local Cache</button>
+
+    <div id="admin-real-content">
+      <div style="margin-bottom:14px">
+        <div style="font-size:9px;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px">Manage Periods — <strong id="admin-store-name" style="color:var(--t1);font-weight:600;text-transform:none;letter-spacing:0">—</strong></div>
+        <p style="margin-bottom:8px">Deleting removes data from the server for all users.</p>
+        <ul class="per-list" id="manage-list"></ul>
+        <button class="btn btn-gold btn-sm" onclick="closeOv('ov-admin');openUpload()">&#8679; Load Another Period</button>
+      </div>
+      <div style="height:1px;background:var(--rule2);margin:16px 0"></div>
+      <div>
+        <div style="font-size:9px;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px">Sync</div>
+        <p style="margin-bottom:10px;color:var(--t2)">Force a full re-fetch from the server so all browsers see the same data. Or wipe the local browser cache entirely.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-purple btn-sm" onclick="refreshFromServer()">&#8635; Refresh from Server</button>
+          <button class="btn btn-gold-outline btn-sm" onclick="clearLocalCache()">&#128465; Clear Local Cache</button>
+        </div>
+      </div>
+      <div style="height:1px;background:var(--rule2);margin:16px 0"></div>
+      <div>
+        <div style="font-size:9px;color:var(--red);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px">Danger Zone</div>
+        <p style="margin-bottom:10px;color:var(--t2)">Permanently delete snapshots from the server. Cannot be undone.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-danger btn-sm" onclick="deleteAllPeriods()">&#9888; Clear Current Store Data</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteAllStoresData()">&#9888; Delete All Server Data</button>
+        </div>
       </div>
     </div>
-    <div style="height:1px;background:var(--rule2);margin:16px 0"></div>
-    <div>
-      <div style="font-size:9px;color:var(--red);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px">Danger Zone</div>
-      <p style="margin-bottom:10px;color:var(--t2)">Permanently delete snapshots from the server. Cannot be undone.</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-danger btn-sm" onclick="deleteAllPeriods()">&#9888; Clear Current Store Data</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteAllStoresData()">&#9888; Delete All Server Data</button>
-      </div>
-    </div>
+
     <div class="mfoot" style="margin-top:18px">
       <button class="btn btn-ghost" onclick="closeOv('ov-admin')">Close</button>
     </div>
@@ -688,7 +701,11 @@ async function serverUpload(storeId,period,label,fileName,snapshot,rows,H){
   }catch(e){console.error('upload failed',e);return false;}
 }
 async function serverDeletePeriod(id,period){
-  try{await fetch(`${BACKEND_URL}/api/store/${id}/period/${encodeURIComponent(period)}`,{method:'DELETE'});}catch{}
+  try{
+    const pw=adminPassword();
+    const res=await fetch(`${BACKEND_URL}/api/store/${id}/period/${encodeURIComponent(period)}?password=${encodeURIComponent(pw)}`,{method:'DELETE'});
+    return res.status;
+  }catch{return null;}
 }
 
 async function fetchAndCacheIndex(id){
@@ -1386,22 +1403,65 @@ function processUpload(){
    MANAGE PERIODS MODAL
 ═══════════════════════════════════════════════════════════════ */
 function openAdmin(){
+  if(sessionStorage.getItem('adminUnlocked')==='1')showAdminContent();
+  else showAdminLock();
+  openOv('ov-admin');
+}
+function showAdminLock(){
+  document.getElementById('admin-lock').style.display='flex';
+  document.getElementById('admin-real-content').style.display='none';
+}
+function showAdminContent(){
+  document.getElementById('admin-lock').style.display='none';
+  document.getElementById('admin-real-content').style.display='block';
+  populateAdminContent();
+}
+function adminPassword(){return sessionStorage.getItem('adminPassword')||'';}
+function lockAdmin(reason){
+  sessionStorage.removeItem('adminUnlocked');
+  sessionStorage.removeItem('adminPassword');
+  if(reason)toast(reason,'red');
+  showAdminLock();
+}
+document.getElementById('admin-lock-form').addEventListener('submit',async(e)=>{
+  e.preventDefault();
+  const val=document.getElementById('admin-lock-input').value;
+  if(!val)return;
+  const errEl=document.getElementById('admin-lock-error');
+  errEl.textContent='';
+  try{
+    const res=await fetch('/api/admin-auth?password='+encodeURIComponent(val));
+    const data=await res.json();
+    if(data.ok){
+      sessionStorage.setItem('adminPassword',val);
+      sessionStorage.setItem('adminUnlocked','1');
+      showAdminContent();
+    }else{
+      errEl.textContent='Incorrect password.';
+    }
+  }catch(err){
+    errEl.textContent='Could not verify password — try again.';
+  }
+});
+function populateAdminContent(){
   const s=STORES.find(x=>x.id===curStore);
   document.getElementById('admin-store-name').textContent=s?s.name:curStore;
   const periods=getStorePeriods(curStore);
   const list=document.getElementById('manage-list');
-  if(!periods.length){list.innerHTML='<li class="per-item" style="color:var(--t3)">No periods stored for this store.</li>';openOv('ov-admin');return;}
+  if(!periods.length){list.innerHTML='<li class="per-item" style="color:var(--t3)">No periods stored for this store.</li>';return;}
   list.innerHTML=periods.map(p=>`
     <li class="per-item">
       <span class="per-item-label">${periodLabel(p.period)}</span>
       <span class="per-item-meta">${p.fileName||p.period} · ${p.rep_count||0} reps · ${p.delivered||0} del</span>
       <button class="per-item-del" onclick="deletePeriod('${curStore}','${p.period}')">Delete</button>
     </li>`).join('');
-  openOv('ov-admin');
 }
 async function deletePeriod(storeId,period){
   if(!confirm(`Delete ${periodLabel(period)} data for ${STORES.find(x=>x.id===storeId)?.name||storeId}?\n\nThis removes it from the server for all users.`))return;
-  if(HAS_BACKEND)await serverDeletePeriod(storeId,period);
+  if(HAS_BACKEND){
+    const status=await serverDeletePeriod(storeId,period);
+    if(status===401){lockAdmin('Session expired — re-enter admin password.');return;}
+  }
   removeFromLocalCache(storeId,period);
   delete _sessionRows[`${storeId}_${period}`];
   if(getActivePeriod(storeId)===period)delete _activePeriod[storeId];
@@ -1415,7 +1475,10 @@ async function deleteAllPeriods(){
   if(!confirm(`Delete ALL ${periods.length} period(s) for ${s?.name||curStore}?\n\nThis removes all data from the server for all users and cannot be undone.`))return;
   if(!confirm(`Final confirmation: permanently delete all ${periods.length} snapshot(s) for ${s?.name||curStore}?`))return;
   for(const p of [...periods]){
-    if(HAS_BACKEND)await serverDeletePeriod(curStore,p.period);
+    if(HAS_BACKEND){
+      const status=await serverDeletePeriod(curStore,p.period);
+      if(status===401){lockAdmin('Session expired — re-enter admin password.');return;}
+    }
   }
   // Wipe all localStorage keys for this store (catches orphaned/stale keys too)
   const pfx=curStore+'_';
@@ -1434,7 +1497,10 @@ async function deleteAllStoresData(){
   for(const s of STORES){
     const periods=getStorePeriods(s.id);
     for(const p of [...periods]){
-      if(HAS_BACKEND)await serverDeletePeriod(s.id,p.period);
+      if(HAS_BACKEND){
+        const status=await serverDeletePeriod(s.id,p.period);
+        if(status===401){lockAdmin('Session expired — re-enter admin password.');return;}
+      }
       deleted++;
     }
   }
