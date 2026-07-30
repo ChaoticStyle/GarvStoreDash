@@ -148,20 +148,23 @@ td{padding:8px 11px;font-family:var(--mono);font-size:11px;color:var(--t1)}
 td.nm{font-family:var(--font);font-size:12px;font-weight:500;color:var(--t0)}
 td.r{text-align:right}
 .sub{display:block;font-size:9px;color:var(--t3);font-weight:400;letter-spacing:.4px;margin-top:1px}
-.sub.tip{cursor:help;border-bottom:1px dotted var(--t3);display:inline-block;position:relative}
+.sub.tip{cursor:help;border-bottom:1px dotted var(--t3);display:inline-block}
 .sub.tip:hover{color:var(--t1)}
-.sub.tip:hover::after{
-  content:attr(data-tip);position:absolute;left:0;top:calc(100% + 7px);z-index:60;
-  width:220px;white-space:normal;text-align:left;
+/* Tooltips render into a single floating box attached to <body>, not as a ::after on
+   the element. The table lives inside .tshell{overflow:hidden} + .tscroll{overflow-x:auto},
+   which would clip an in-flow tooltip — a one-rep store leaves only ~87px below the
+   header for a ~115px tooltip. Anchoring to <body> escapes every overflow context and
+   lets the box flip above the cursor when it would run off the bottom of the screen. */
+th.tip{cursor:help}
+#tipbox{
+  position:fixed;z-index:900;width:250px;pointer-events:none;
   background:var(--ink2);border:1px solid var(--rule2);border-radius:6px;
-  padding:8px 10px;font-family:var(--font);font-size:11px;font-weight:400;
-  letter-spacing:normal;text-transform:none;color:var(--t0);line-height:1.5;
-  box-shadow:0 10px 28px rgba(0,0,0,.5);
+  padding:9px 11px;font-family:var(--font);font-size:11px;font-weight:400;
+  letter-spacing:normal;text-transform:none;text-align:left;color:var(--t0);line-height:1.55;
+  box-shadow:0 10px 28px rgba(0,0,0,.55);
+  opacity:0;visibility:hidden;transition:opacity .12s;
 }
-.sub.tip:hover::before{
-  content:'';position:absolute;left:8px;top:100%;z-index:61;
-  border:5px solid transparent;border-bottom-color:var(--rule2);
-}
+#tipbox.on{opacity:1;visibility:visible}
 .cg{color:var(--grn)}.ca{color:var(--gold)}.cr{color:var(--red)}.cn{color:var(--t3)}
 .conv-val{font-family:var(--disp);font-size:15px}
 .del-val{font-family:var(--disp);font-size:15px;color:var(--grn)}
@@ -943,6 +946,20 @@ function getEffectiveDateTo(id,period){
 /* ═══════════════════════════════════════════════════════════════
    HELPERS
 ═══════════════════════════════════════════════════════════════ */
+/* Plain-language column definitions. These are what a store manager sees on hover —
+   keep them free of column names, code terms and jargon. */
+const COL_TIPS={
+  name:'The salesperson credited with the lead. Managers, front desk, admin and automated house accounts are left out of this report entirely.',
+  total_leads:'Every customer opportunity assigned to this rep that came in during this period. The same customer counts only once, even if they reached out several different ways.',
+  bad_leads:'Leads that were never workable &#8212; bad credit, wrong or missing contact details, duplicates, out of market, already bought somewhere else, or asked not to be contacted. These are not held against the rep.',
+  valid_leads:'All Leads minus Bad Leads. This is the real, workable pipeline, and it is what Cov% and Vis% are measured against.',
+  visits:'Customers who actually came into the store and were logged as a showroom visit. Each visit counts once, no matter how many lead records it touches. Visits logged under a manager or the front desk are not counted here.',
+  write_ups:'Visits where a deal was actually written up. Counted once per visit.',
+  delivered:'Units sold, credited to the month the deal closed. Includes deals still waiting on finance (shown in amber) and deals whose lead came from an earlier month (shown as &#8220;prior&#8221;).',
+  conv_pct:'Of the workable leads, the share that turned into a sale &#8212; Deliveries divided by Valid Leads. Green at 20% and above, amber 10&#8211;20%, red below 10%.',
+  valid_to_visit_rate:'Of the workable leads, the share that actually came into the store &#8212; Visits divided by Valid Leads. Green at 50% and above, amber 25&#8211;50%, red below 25%.',
+  writeup_rate:'Of the customers who came in, the share that got written up &#8212; Write-ups divided by Visits. Green at 50% and above, amber 30&#8211;50%, red below 30%.',
+};
 const PENDING_TIP='Sold but not yet funded (e.g. &#8220;Sold Pending Finance&#8221;). These ARE counted in Deliveries and Cov%. If the deal funds it stays counted; if it reverts to active, lost or bad it drops off the next time this month is re-scored. Closed months stay frozen.';
 const PRIOR_TIP='Deliveries in this window whose lead didn&#8217;t originate here &#8212; carried over from an earlier period, or an extra unit sold to a customer already counted elsewhere.';
 const pct=v=>(v*100).toFixed(1)+'%';
@@ -1159,8 +1176,8 @@ function tableHTML(reps,totals){
     {k:'valid_to_visit_rate',l:'Vis%',r:true},
     {k:'writeup_rate',l:'WU%',      r:true},
   ];
-  const thCls=c=>'sortable'+(c.r?' r':'')+(sortCol===c.k?' sort-'+sortDir:'');
-  const thead=cols.map(c=>`<th class="${thCls(c)}" onclick="setSort('${c.k}')">${c.l}</th>`).join('');
+  const thCls=c=>'sortable tip'+(c.r?' r':'')+(sortCol===c.k?' sort-'+sortDir:'');
+  const thead=cols.map(c=>`<th class="${thCls(c)}" data-tip="${COL_TIPS[c.k]||''}" onclick="setSort('${c.k}')">${c.l}</th>`).join('');
   const sorted=sortedReps(reps);
   const rows=sorted.map(r=>{
     const cc=convCls(r.conv_pct);
@@ -1346,7 +1363,7 @@ function compareHTML(storeId){
     const va=ra?.[sort.col]??-Infinity;const vb=rb?.[sort.col]??-Infinity;
     return dir*(va-vb);
   });
-  const thSort=(p,col,label)=>{const active=sort.period===p&&sort.col===col;const cls='r sortable'+(active?' sort-'+sort.dir:'');return`<th class="${cls}" style="min-width:78px" onclick="setCmpSort('${storeId}','${p}','${col}')">${label}</th>`;};
+  const thSort=(p,col,label)=>{const active=sort.period===p&&sort.col===col;const cls='r sortable tip'+(active?' sort-'+sort.dir:'');return`<th class="${cls}" data-tip="${COL_TIPS[col]||''}" style="min-width:78px" onclick="setCmpSort('${storeId}','${p}','${col}')">${label}</th>`;};
   const repThCls='sortable'+(sort.col==='name'?' sort-'+sort.dir:'');
   const colGroups=selPeriods.map((p,i)=>`<th class="cmp-period-hd ${i%2===0?'':'alt'}" colspan="3">${periodLabel(p)}</th>`);
   const subHeaders=selPeriods.flatMap(p=>[thSort(p,'total_leads','Leads'),thSort(p,'delivered','Delivered'),thSort(p,'conv_pct','Conv%')]);
@@ -1518,6 +1535,50 @@ function processUpload(){
    MANAGE PERIODS MODAL
 ═══════════════════════════════════════════════════════════════ */
 /* ═══════════════════════════════════════════════════════════════
+   FLOATING TOOLTIPS  — one shared box for every [data-tip] element
+═══════════════════════════════════════════════════════════════ */
+let _tipEl=null,_tipTimer=null;
+function _tipBox(){
+  if(!_tipEl){_tipEl=document.createElement('div');_tipEl.id='tipbox';document.body.appendChild(_tipEl);}
+  return _tipEl;
+}
+function showTip(target){
+  const txt=target.getAttribute('data-tip');if(!txt)return;
+  const box=_tipBox();
+  box.innerHTML=txt;
+  box.classList.add('on');
+  const r=target.getBoundingClientRect();
+  const bw=box.offsetWidth,bh=box.offsetHeight,pad=8;
+  // innerWidth/innerHeight read 0 in some embedded/snapshot renderers, which would
+  // collapse every tooltip into the top-left corner. Fall back to the document
+  // element, then to a sane default, so positioning degrades gracefully.
+  const vw=window.innerWidth||document.documentElement.clientWidth||1280;
+  const vh=window.innerHeight||document.documentElement.clientHeight||800;
+  // Prefer below the element; flip above when it would run off the bottom.
+  let top=r.bottom+6;
+  if(top+bh>vh-pad)top=Math.max(pad,r.top-bh-6);
+  // Prefer left-aligned; clamp so it never leaves the viewport on either side.
+  let left=r.left;
+  if(left+bw>vw-pad)left=vw-bw-pad;
+  if(left<pad)left=pad;
+  box.style.top=top+'px';box.style.left=left+'px';
+}
+function hideTip(){clearTimeout(_tipTimer);if(_tipEl)_tipEl.classList.remove('on');}
+document.addEventListener('mouseover',e=>{
+  const t=e.target.closest&&e.target.closest('[data-tip]');
+  if(!t)return;
+  clearTimeout(_tipTimer);
+  _tipTimer=setTimeout(()=>showTip(t),220);
+});
+document.addEventListener('mouseout',e=>{
+  const t=e.target.closest&&e.target.closest('[data-tip]');
+  if(t)hideTip();
+});
+// A tooltip anchored to viewport coords goes stale the moment anything moves.
+window.addEventListener('scroll',hideTip,true);
+window.addEventListener('resize',hideTip);
+
+/* ═══════════════════════════════════════════════════════════════
    METHODOLOGY TAB  (open to all viewers — NOT admin-gated)
 ═══════════════════════════════════════════════════════════════ */
 const mEsc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -1586,17 +1647,31 @@ function methodologyHTML(){
 
 <div class="meth-sec" id="meth-columns">
   <div class="meth-h">Every column, defined</div>
-  <div class="meth-def"><div class="meth-term">Rep</div><div class="meth-desc">The <span class="meth-k">Sales Rep</span> on the lead. Reps who never appear on a qualifying lead or visit don’t appear at all.</div></div>
-  <div class="meth-def"><div class="meth-term">All Leads</div><div class="meth-desc">Every lead assigned to that rep that originated in the period, after de-duplication and after the exclusions below. This is the raw pipeline the rep was handed.</div></div>
-  <div class="meth-def"><div class="meth-term">Bad Leads</div><div class="meth-desc">The subset of All Leads whose <span class="meth-k">Lead Status</span> is one of ten disqualifying values — bad credit, bad or no contact information, dealer test lead, duplicate lead, no intent to buy, out of market, purchased a different brand from another dealer, purchased the same brand from another dealer, purchased from a private party, or requested no further contact. These are not held against the rep.</div></div>
-  <div class="meth-def"><div class="meth-term">Valid Leads</div><div class="meth-desc">All Leads minus Bad Leads. <strong>This is the denominator for Cov% and Vis%</strong> — reps are measured only on leads they could actually work.<span class="meth-f">Valid = All Leads − Bad Leads</span></div></div>
-  <div class="meth-def"><div class="meth-term">Visits</div><div class="meth-desc">Distinct showroom visits credited to the rep. Counted by <span class="meth-k">Showroom Visit ID</span>, so one visit counts once no matter how many lead records it touches. Visits marked <span class="meth-k">Deleted</span>, and visits assigned to a Manager, Reception or Admin user group, are excluded.</div></div>
-  <div class="meth-def"><div class="meth-term">Write-ups</div><div class="meth-desc">Distinct visits where <span class="meth-k">Write Up</span> is <span class="meth-k">Y</span>. If any record for a visit is marked written up, that visit counts once.</div></div>
-  <div class="meth-def"><div class="meth-term">Deliveries</div><div class="meth-desc">Units sold in the period — see <a href="#meth-deliveries" onclick="document.getElementById('meth-deliveries').scrollIntoView({behavior:'smooth'});return false;" style="color:var(--gold)">the next section</a>, which is the part worth reading closely.</div></div>
-  <div class="meth-def"><div class="meth-term">Cov%</div><div class="meth-desc">Closing rate on workable leads.<span class="meth-f">Cov% = Deliveries ÷ Valid Leads</span></div></div>
-  <div class="meth-def"><div class="meth-term">Vis%</div><div class="meth-desc">How much of the workable pipeline the rep got in the door.<span class="meth-f">Vis% = Visits ÷ Valid Leads</span></div></div>
-  <div class="meth-def"><div class="meth-term">WU%</div><div class="meth-desc">How often a visit turned into a written deal.<span class="meth-f">WU% = Write-ups ÷ Visits</span></div></div>
-  <div class="meth-def"><div class="meth-term">TOTALS row</div><div class="meth-desc">Counts are summed down the column. Percentages are <strong>recalculated from those sums</strong> — they are not the average of the rep percentages, so a high-volume rep moves the store rate more than a low-volume one.</div></div>
+  <p class="meth-p">Read the table left to right and it tells a story: how many customers a rep was handed, how many were real, how many walked in, how many got written up, and how many bought.</p>
+
+  <div class="meth-def"><div class="meth-term">Rep</div><div class="meth-desc">The salesperson credited with the lead.<br><br>Managers, front desk, admin and automated house accounts are left out of this report entirely, so their activity never lands in a rep&#8217;s row or the store totals. If someone is missing from the table, they either had no leads and no visits this period, or they are on that exclusion list.</div></div>
+
+  <div class="meth-def"><div class="meth-term">All Leads</div><div class="meth-desc">Every customer opportunity handed to that rep during the period.<br><br><strong>The same customer counts once.</strong> If a shopper filled out a web form, then called, then walked in, that is one lead &#8212; not three. They are matched up by name, email or phone number.</div></div>
+
+  <div class="meth-def"><div class="meth-term">Bad Leads</div><div class="meth-desc">Leads that were never workable in the first place: bad credit, wrong or missing contact details, duplicates, no intent to buy, out of market, already bought somewhere else, or asked not to be contacted.<br><br><strong>These are not held against the rep.</strong> They are shown so you can see how much of the pipeline was junk, then taken back out before any percentage is calculated.</div></div>
+
+  <div class="meth-def"><div class="meth-term">Valid Leads</div><div class="meth-desc">All Leads minus Bad Leads &#8212; the real, workable pipeline.<br><br><strong>This is the number every percentage is measured against.</strong> A rep is judged on what they could actually work, not on junk they were handed.<span class="meth-f">Valid Leads = All Leads &#8722; Bad Leads</span></div></div>
+
+  <div class="meth-def"><div class="meth-term">Visits</div><div class="meth-desc">Customers who actually came into the store and were logged as a showroom visit.<br><br>Each visit counts <strong>once</strong>, no matter how many lead records it is attached to. Visits logged under a manager or the front desk, and visits marked deleted, are not counted.</div></div>
+
+  <div class="meth-def"><div class="meth-term">Write-ups</div><div class="meth-desc">Visits where a deal was actually written up. Counted once per visit &#8212; if the visit was marked written up anywhere, it counts one time.</div></div>
+
+  <div class="meth-def"><div class="meth-term">Deliveries</div><div class="meth-desc">Units sold, credited to the month the deal <strong>closed</strong> &#8212; not the month the lead came in.<br><br>Two labels can appear under this number, and both are explained in the next section: <span style="color:var(--gold)">pending sold</span> and <em>prior</em>.</div></div>
+
+  <div class="meth-def"><div class="meth-term">Cov%</div><div class="meth-desc">Of the workable leads, the share that turned into a sale. Your closing rate.<span class="meth-f">Cov% = Deliveries &#247; Valid Leads</span></div></div>
+
+  <div class="meth-def"><div class="meth-term">Vis%</div><div class="meth-desc">Of the workable leads, the share the rep actually got through the door. A low number here usually means a follow-up problem, not a closing problem.<span class="meth-f">Vis% = Visits &#247; Valid Leads</span></div></div>
+
+  <div class="meth-def"><div class="meth-term">WU%</div><div class="meth-desc">Of the customers who came in, the share that got written up. A low number here points at what is happening on the floor, not at lead quality.<span class="meth-f">WU% = Write-ups &#247; Visits</span></div></div>
+
+  <div class="meth-def"><div class="meth-term">TOTALS row</div><div class="meth-desc">The counts are simply added down each column. The percentages are <strong>recalculated from those totals</strong> &#8212; they are not the average of the rep percentages. A rep with 80 leads moves the store number more than a rep with 8, which is what you want.</div></div>
+
+  <div class="meth-note">Hover any column header in the table to see this same explanation without coming back here.</div>
 </div>
 
 <div class="meth-sec" id="meth-deliveries">
