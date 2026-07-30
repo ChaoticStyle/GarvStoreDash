@@ -764,14 +764,44 @@ function recomputeRaw(rows,H,storeId,fromStr,toStr){
    LOCAL CACHE (localStorage as client-side cache of server data)
 ═══════════════════════════════════════════════════════════════ */
 const _lsGet=k=>{try{return JSON.parse(localStorage.getItem('sdash_'+k))}catch{return null}};
-const _lsSet=(k,v)=>{try{localStorage.setItem('sdash_'+k,JSON.stringify(v))}catch(e){console.warn('ls full',e)}};
+const _lsSet=(k,v)=>{try{localStorage.setItem('sdash_'+k,JSON.stringify(v));return true}catch(e){console.warn('ls full',e);return false}};
 
 function getCachedIndex(id){return _lsGet('ci_'+id)||[];}
 function cacheIndex(id,v){_lsSet('ci_'+id,v);}
 function getCachedSnap(id,period){return _lsGet(`cs_${id}_${period}`);}
 function cacheSnap(id,period,v){_lsSet(`cs_${id}_${period}`,v);}
-function getCachedRows(id,period){return _lsGet(`cr_${id}_${period}`);}
-function cacheRows(id,period,v){_lsSet(`cr_${id}_${period}`,v);}
+/* Row blobs are ~350 KB each. A 9-store x 9-month dashboard needs ~28 MB, against a
+   ~5 MB localStorage budget — only ~14 periods ever fit. localStorage therefore cannot
+   be the source of truth for rows: an in-memory LRU is, and localStorage is a
+   best-effort warm cache for the next page load.
+   Before this, a quota failure was swallowed, getCachedRows stayed null, and
+   renderContent re-fetched and re-rendered forever without ever setting the
+   fetch-failed flag. */
+const _memRows={};const _memRowsOrder=[];const MEM_ROWS_MAX=4;
+function _memRowsPut(k,v){
+  if(!(k in _memRows))_memRowsOrder.push(k);
+  _memRows[k]=v;
+  while(_memRowsOrder.length>MEM_ROWS_MAX){const old=_memRowsOrder.shift();if(old!==k)delete _memRows[old];}
+}
+function getCachedRows(id,period){
+  const k=`${id}_${period}`;
+  if(_memRows[k])return _memRows[k];
+  const fromLs=_lsGet(`cr_${id}_${period}`);
+  if(fromLs&&fromLs.rows&&fromLs.H){_memRowsPut(k,fromLs);return fromLs;}
+  return null;
+}
+function cacheRows(id,period,v){
+  if(!v||!v.rows||!v.H)return false;
+  _memRowsPut(`${id}_${period}`,v);
+  // Best effort only. On quota failure, drop other stored row blobs (the memory LRU
+  // still has what this session needs) and retry once.
+  if(_lsSet(`cr_${id}_${period}`,v))return true;
+  try{
+    Object.keys(localStorage).filter(x=>x.startsWith('sdash_cr_')&&x!=='sdash_cr_'+id+'_'+period)
+      .forEach(x=>localStorage.removeItem(x));
+  }catch{}
+  return _lsSet(`cr_${id}_${period}`,v);
+}
 
 /* ═══════════════════════════════════════════════════════════════
    SERVER FETCH FUNCTIONS
@@ -819,7 +849,9 @@ async function fetchAndCacheSnap(id,period){
 async function fetchAndCacheRows(id,period){
   if(!HAS_BACKEND)return null;
   const fresh=await serverFetchRows(id,period);
-  if(fresh){cacheRows(id,period,fresh);return fresh;}
+  // Only rows+H makes a usable source. A blob that arrives without them must count as a
+  // failure, or renderContent will spin forever waiting for a source that never appears.
+  if(fresh&&fresh.rows&&fresh.H){cacheRows(id,period,fresh);return fresh;}
   return null;
 }
 
@@ -846,6 +878,8 @@ function removeFromLocalCache(id,period){
   cacheIndex(id,idx);
   _lsSet(`cs_${id}_${period}`,null);
   _lsSet(`cr_${id}_${period}`,null);
+  delete _memRows[`${id}_${period}`];
+  const mi=_memRowsOrder.indexOf(`${id}_${period}`);if(mi>=0)_memRowsOrder.splice(mi,1);
   _rowsFetchFailed.delete(`${id}_${period}`);
   _rowsFetchInFlight.delete(`${id}_${period}`);
 }
