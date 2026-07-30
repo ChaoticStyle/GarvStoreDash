@@ -18,6 +18,21 @@ const PII_COLS = [
   'Daytime Phone', 'Day Phone',
   'Cell Phone', 'Evening Phone',
 ];
+// ALLOWLIST — the only columns that may be persisted. Derived from parseMasterCSVv2's
+// H.* mapping plus Stock Number: scoring can only reach columns through those keys, so
+// nothing outside this list can affect any number. Everything else in the export is
+// blanked — VIN, Total Gross, Total Sale Price, Visit Notes, employee-name columns.
+// Keep in sync with public/index.html and store-ingest.mjs.
+const SCORING_COLS = [
+  'Customer','Email','Daytime Phone','Day Phone','Cell Phone','Evening Phone',
+  'Stock Number','Dealer','Lead Source','Lead Source Group','Lead Type','Make',
+  'Lead Status','Lead Status Custom','Lead Status Type',
+  'Lead Origination Date','Lead Last Modified Date','Visit Start Date',
+  'Adjusted Response Time (Min)','Contacted Indicator',
+  'Last Attempted Phone Contact','Last Attempted Email Contact','Last Attempted Text Contact Datetime',
+  'Sales Rep','Showroom Visit ID','Assigned User - User Group',
+  'Visit Result','Write Up','Trade Appraisal',
+];
 
 const normPhone = p => { const d = String(p||'').replace(/\D/g,''); const s = d.length===11&&d.startsWith('1')?d.slice(1):d; return s.length===10?s:''; };
 const normEmail = e => { const s = String(e||'').trim().toLowerCase(); return s.includes('@')?s:''; };
@@ -43,26 +58,26 @@ function hashPhoneDigits(hash, raw) {
   return String(n).padStart(10, '0').slice(-10);
 }
 
+// Defensive re-strip. Fails CLOSED: returns null so the caller skips the rows blob.
 function restrip(payload) {
   if (!payload?.rows || !payload?.H) return payload;
   const H = payload.H;
-  const headers = Array.isArray(H.allHeaders) ? H.allHeaders : [];
-  const pii = new Set();
-  headers.forEach((h, i) => { if (PII_COLS.includes(String(h || '').trim())) pii.add(i); });
-  PII_COLS.forEach(n => { if (typeof H[n] === 'number') pii.add(H[n]); });
-  if (!pii.size) return payload;
+  if (!Array.isArray(H.allHeaders) || !H.allHeaders.length) return null;
+  const keep = new Set();
+  H.allHeaders.forEach((h, i) => { if (SCORING_COLS.includes(String(h || '').trim())) keep.add(i); });
+  const hdr = H.allHeaders;
   const hash = makeDedupHasher();
   return {
     ...payload,
     rows: payload.rows.map(row => {
       const out = row.slice();
-      pii.forEach(i => {
-        if (i < 0 || i >= out.length) return;
+      for (let i = 0; i < out.length; i++) {
+        if (!keep.has(i)) { out[i] = ''; continue; }
         if (i === H.CUSTOMER) { const nm = normCust(out[i]); out[i] = nm ? hash(nm) : ''; }
         else if (i === H.EMAIL) { const em = normEmail(out[i]); out[i] = em ? hash(em) + '@h' : ''; }
         else if (i === H.DAY_PHONE || i === H.EVE_PHONE || i === H.CELL_PHONE) { out[i] = hashPhoneDigits(hash, out[i]); }
-        else out[i] = '';
-      });
+        else if (PII_COLS.includes(String(hdr[i] || '').trim())) { out[i] = ''; }
+      }
       return out;
     }),
   };
@@ -100,6 +115,10 @@ export default async (req) => {
   // 2. Store PII-stripped rows (for cross-browser date filtering)
   if (rows && H) {
     const clean = restrip({ rows, H, fileName, uploadedAt: now });
+    if (!clean) {
+      console.warn(`rows sanitisation failed for ${storeId}/${period} — rows not stored`);
+      return Response.json({ ok: true, storeId, period, rowsStored: false }, { headers: CORS });
+    }
     try {
       await store.setJSON(`rows_${storeId}_${period}`, clean);
     } catch (e) {

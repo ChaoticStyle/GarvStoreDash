@@ -166,10 +166,8 @@ td.r{text-align:right}
 .conv-val{font-family:var(--disp);font-size:15px}
 .del-val{font-family:var(--disp);font-size:15px;color:var(--grn)}
 .leads-val{font-family:var(--disp);font-size:15px;color:var(--blu)}
-.sp{display:inline-block;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase}
-.sp-f{background:var(--g2-bg);color:var(--grn)}.sp-s{background:var(--g-bg);color:var(--gold)}
-.sp-p{background:var(--b-bg);color:var(--blu)}.sp-m{background:var(--r-bg);color:var(--red)}
-.sp-n{background:var(--ink3);color:var(--t2)}
+.sub.pend{color:var(--gold)}
+.kpi-s .pend{color:var(--gold)}
 .no-data{font-size:10px;color:var(--t3);font-style:italic;font-family:var(--font)}
 .cmp-period-hd{padding:3px 11px 6px;background:var(--g-bg);border-bottom:1px solid var(--g-bd);font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--gold);text-align:center}
 .cmp-period-hd.alt{background:var(--b-bg);border-bottom-color:rgba(59,130,246,.3);color:var(--blu)}
@@ -205,7 +203,39 @@ td.delta-eq{color:var(--t3)}
 .ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(5px);padding:18px}
 .ov.open{display:flex}
 .modal{background:var(--ink1);border:1px solid var(--rule2);border-radius:var(--radius2);padding:22px;position:relative;width:100%;animation:rise .18s both}
-.modal.md{max-width:530px}.modal.sm{max-width:430px}
+.modal.md{max-width:530px}.modal.sm{max-width:430px}.modal.lg{max-width:900px}
+/* ── Methodology tab ── */
+.meth-body{max-height:70vh;overflow-y:auto;margin:14px 0;padding-right:10px}
+.meth-body::-webkit-scrollbar{width:8px}
+.meth-body::-webkit-scrollbar-thumb{background:var(--rule2);border-radius:4px}
+.meth-nav{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--rule)}
+.meth-nav a{font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--t2);background:var(--ink2);border:1px solid var(--rule2);border-radius:5px;padding:4px 9px;text-decoration:none;transition:all .12s}
+.meth-nav a:hover{color:var(--gold);border-color:var(--g-bd);background:var(--g-bg)}
+.meth-sec{margin-bottom:22px;scroll-margin-top:8px}
+.meth-h{font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold);margin-bottom:9px;padding-bottom:5px;border-bottom:1px solid var(--g-bd)}
+.meth-p{font-size:12px;color:var(--t1);line-height:1.75;margin-bottom:11px}
+.meth-p strong{color:var(--t0)}
+.meth-def{display:grid;grid-template-columns:132px 1fr;gap:10px 14px;margin-bottom:11px;align-items:start}
+.meth-term{font-size:11px;font-weight:600;color:var(--t0);line-height:1.5}
+.meth-desc{font-size:11px;color:var(--t1);line-height:1.7}
+.meth-f{font-family:var(--mono);font-size:10.5px;color:var(--gold);background:var(--g-bg);border:1px solid var(--g-bd);border-radius:4px;padding:1px 6px;display:inline-block;margin-top:4px}
+.meth-k{font-family:var(--mono);font-size:10.5px;color:var(--t0);background:var(--ink3);border-radius:3px;padding:1px 5px}
+.meth-list{font-size:11px;color:var(--t1);line-height:1.85;padding-left:17px;margin-bottom:11px}
+.meth-note{font-size:11px;color:var(--t1);line-height:1.7;background:var(--b-bg);border-left:2px solid var(--blu);padding:9px 12px;border-radius:0 5px 5px 0;margin-bottom:11px}
+.meth-warn{font-size:11px;color:var(--t1);line-height:1.7;background:var(--g-bg);border-left:2px solid var(--gold);padding:9px 12px;border-radius:0 5px 5px 0;margin-bottom:11px}
+.meth-tbl{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:11px}
+.meth-tbl th{text-align:left;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--t3);padding:5px 8px;border-bottom:1px solid var(--rule)}
+.meth-tbl td{padding:6px 8px;border-bottom:1px solid var(--rule);color:var(--t1);vertical-align:top;line-height:1.6}
+.meth-tbl tr:last-child td{border-bottom:none}
+.meth-tbl td.c{white-space:nowrap}
+.meth-diag{background:var(--ink2);border:1px solid var(--rule2);border-radius:var(--radius);padding:11px 13px;margin-bottom:11px}
+.meth-diag-h{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--t2);margin-bottom:8px}
+.meth-sv{display:flex;justify-content:space-between;gap:12px;font-size:11px;padding:3px 0;border-bottom:1px dotted var(--rule)}
+.meth-sv:last-child{border-bottom:none}
+.meth-sv-n{font-family:var(--mono);font-size:10.5px;color:var(--t0)}
+.meth-sv-c{font-family:var(--mono);font-size:10.5px;color:var(--t2);white-space:nowrap}
+.meth-sv.hit .meth-sv-n{color:var(--gold);font-weight:600}
+.meth-foot{font-size:10px;color:var(--t3);line-height:1.6;border-top:1px solid var(--rule);padding-top:10px;margin-top:4px}
 .mcl{position:absolute;top:12px;right:14px;font-size:15px;cursor:pointer;color:var(--t2);background:none;border:none;padding:4px;line-height:1;transition:color .12s}
 .mcl:hover{color:var(--t0)}
 .modal h2{font-family:var(--disp);font-size:20px;letter-spacing:1.5px;margin-bottom:4px}
@@ -290,6 +320,7 @@ td.delta-eq{color:var(--t3)}
       <div id="sync-badge"><span class="sb-dot"></span>Syncing</div>
     </div>
     <div class="tb-actions">
+      <button class="btn btn-ghost btn-sm" onclick="openMethodology()" title="How every number on this dashboard is calculated">&#9432; Methodology</button>
       <button class="btn btn-ai btn-sm" onclick="openAIModal()">&#10022; AI Coach</button>
       <button class="btn btn-ghost btn-sm" onclick="openAdmin()">&#9881; Admin</button>
       <input type="file" id="file-input-hidden" accept=".csv" multiple style="display:none" onchange="handleFiles(this.files)">
@@ -387,6 +418,17 @@ td.delta-eq{color:var(--t3)}
   </div>
 </div>
 
+<!-- METHODOLOGY — open to every viewer, deliberately NOT behind the admin lock -->
+<div class="ov" id="ov-method" onclick="if(event.target===this)closeOv('ov-method')">
+  <div class="modal lg">
+    <button class="mcl" onclick="closeOv('ov-method')">&#10005;</button>
+    <h2>Methodology</h2>
+    <p style="margin-bottom:0">How every number on this dashboard is calculated, straight from the scoring code.</p>
+    <div class="meth-body" id="meth-body"></div>
+    <div class="mfoot"><button class="btn btn-ghost" onclick="closeOv('ov-method')">Close</button></div>
+  </div>
+</div>
+
 <script>
 /* ═══════════════════════════════════════════════════════════════
    BACKEND CONFIG
@@ -454,7 +496,7 @@ const SYS_PATTERNS=['your friends at great american rv','yod house agent'];
 const MGR_GROUPS=new Set(['Manager','Reception','Admin']);
 const isSysAccount=name=>{const n=normName(name);return SYS_PATTERNS.some(p=>n.includes(p))};
 const isTrackedRep=(storeId,name)=>{const n=normName(name);if(!n)return false;if(BLACKLIST.has(n))return false;if(isSysAccount(n))return false;return true;};
-const BAD_STATUSES=new Set(['Bad Credit','Bad or no contact information','Dealer test lead','Duplicate lead','No intent to buy','Out of market','Purchased different brand different dealer','Purchased from private party','Requested no further contact']);
+const BAD_STATUSES=new Set(['Bad Credit','Bad or no contact information','Dealer test lead','Duplicate lead','No intent to buy','Out of market','Purchased different brand different dealer','Purchased from private party','Purchased same brand different dealer','Requested no further contact']);
 
 /* ═══════════════════════════════════════════════════════════════
    CSV PARSER
@@ -493,7 +535,22 @@ function looksLikeMasterCSV(p){if(!p)return false;const H=p.H;return H.SALES_REP
 function normPhone(p){const d=String(p||'').replace(/\D/g,'');const s=d.length===11&&d.startsWith('1')?d.slice(1):d;return s.length===10?s:'';}
 function normEmail(e){const s=String(e||'').trim().toLowerCase();return s.includes('@')?s:'';}
 function normCust(c){return String(c||'').trim().toLowerCase().replace(/\s+/g,' ');}
-function isDelivered(r,H){return(r[H.LEAD_STATUS_TYPE]||'').trim()==='Sold';}
+/* SOLD PENDING FINANCE — a deal that is sold but not yet funded.
+   VinSolutions carries this as a granular Lead Status (e.g. "Sold Pending Finance");
+   which Lead Status Type it rolls up to varies by store configuration, so match on the
+   status text and stay agnostic about the type. This makes the rule correct either way:
+   if the store's config already rolls it up to Type 'Sold' the deal was always counted
+   and we merely tag it; if it rolls up to 'Open' the deal now gets counted.
+   Dealer policy: pending deals COUNT as deliveries, but are flagged so the exposure is
+   visible. If the deal later funds it stays a delivery; if it reverts to active/lost/bad
+   the next re-score of that month drops it (-1) — which is why the live month must keep
+   being re-uploaded, and why closed months stay frozen at whatever they last showed.
+   Add store-specific wording to this list as it turns up in the diagnostic on the
+   Methodology tab. */
+const PENDING_SOLD_PATTERNS=['sold pending','pending sold','pending finance','pending financing','pending funding','pending lender','awaiting finance','awaiting funding'];
+const matchesPendingSold=v=>{const s=String(v||'').trim().toLowerCase().replace(/[_\-\/]+/g,' ').replace(/\s+/g,' ');return s?PENDING_SOLD_PATTERNS.some(p=>s.includes(p)):false;};
+function isPendingSold(r,H){return matchesPendingSold(r[H.LEAD_STATUS])||matchesPendingSold(r[H.LEAD_STATUS_CUSTOM])||matchesPendingSold(r[H.LEAD_STATUS_TYPE]);}
+function isDelivered(r,H){return(r[H.LEAD_STATUS_TYPE]||'').trim()==='Sold'||isPendingSold(r,H);}
 function dedupCustomers(rows,H){
   const n=rows.length;const parent=new Array(n);for(let i=0;i<n;i++)parent[i]=i;
   const find=(x)=>{while(parent[x]!==x){parent[x]=parent[parent[x]];x=parent[x];}return x;};
@@ -537,18 +594,37 @@ function dedupCustomers(rows,H){
   return{leads,extraSales};
 }
 const PII_COL_HEADERS=['Customer','Email','Daytime Phone','Day Phone','Cell Phone','Evening Phone'];
-function piiColIndexes(H){
-  if(H._piiCols)return H._piiCols;
-  const cols=new Set();
-  if(H.allHeaders){for(let i=0;i<H.allHeaders.length;i++){if(PII_COL_HEADERS.includes(H.allHeaders[i]))cols.add(i);}}
-  H._piiCols=cols;return cols;
+/* Columns dropped wholesale before rows ever leave this browser. No metric reads them.
+   Visit Notes is free text written by the sales floor — it routinely carries customer
+   names, callback numbers, trade and finance details — and it was previously shipped
+   verbatim to the server blob and localStorage. Blanked, not spliced out: rows are
+   positional arrays indexed by H, so removing a column would shift every later index. */
+/* ALLOWLIST — the only columns that may leave this browser.
+   Derived mechanically from parseMasterCSVv2's H.* mapping plus Stock Number: the
+   scoring code can only reach columns through those keys, so nothing outside this list
+   can affect a single number on the dashboard. Everything else in the 87-column export
+   is blanked before the rows are cached or uploaded — VIN, Total Gross, Total Sale Price,
+   Visit Notes, and every employee-name column.
+   This is an allowlist on purpose. The old denylist had to name each risky column and
+   lost the race every time VinSolutions added one. Keep in sync across
+   public/index.html, store-ingest.mjs and upload.mjs. */
+const SCORING_COL_HEADERS=['Customer','Email','Daytime Phone','Day Phone','Cell Phone','Evening Phone',
+  'Stock Number','Dealer','Lead Source','Lead Source Group','Lead Type','Make',
+  'Lead Status','Lead Status Custom','Lead Status Type',
+  'Lead Origination Date','Lead Last Modified Date','Visit Start Date',
+  'Adjusted Response Time (Min)','Contacted Indicator',
+  'Last Attempted Phone Contact','Last Attempted Email Contact','Last Attempted Text Contact Datetime',
+  'Sales Rep','Showroom Visit ID','Assigned User - User Group',
+  'Visit Result','Write Up','Trade Appraisal'];
+// Fail CLOSED: without a header row we cannot tell which columns are safe, so we refuse
+// to produce rows at all rather than emit the file untouched (the old behaviour).
+function scoringColIndexes(H){
+  if(H._keepCols)return H._keepCols;
+  if(!Array.isArray(H.allHeaders)||!H.allHeaders.length)return null;
+  const keep=new Set();
+  H.allHeaders.forEach((h,i)=>{if(SCORING_COL_HEADERS.includes(String(h||'').trim()))keep.add(i);});
+  H._keepCols=keep;return keep;
 }
-// Deterministic, salted hash so dedup matching (same Customer/Email/Phone => same
-// customer) still works after PII is stripped from the rows sent to the server — the
-// real value never leaves the browser, but rows sharing the same real value still
-// produce the same hash and dedupe together. Salt is fresh per upload, so the same
-// real customer hashes differently in a different month's file (dedup only needs to
-// match within one period's own rows, never across periods).
 function makeDedupHasher(){
   const salt=Math.random().toString(36).slice(2)+Date.now().toString(36);
   return v=>{
@@ -564,13 +640,16 @@ function hashPhoneDigits(hash,raw){
   return String(n).padStart(10,'0').slice(-10);
 }
 function sanitizeRow(row,H,hash){
-  const cols=piiColIndexes(H);if(!cols.size)return row.slice();
+  const keep=scoringColIndexes(H);
+  if(!keep)return null;                       // caller must refuse to store
+  const hdr=H.allHeaders;
   const out=row.slice();
-  for(const i of cols){
+  for(let i=0;i<out.length;i++){
+    if(!keep.has(i)){out[i]='';continue;}     // outside the allowlist -> dropped
     if(i===H.CUSTOMER){const nm=normCust(out[i]);out[i]=nm?hash(nm):'';}
     else if(i===H.EMAIL){const em=normEmail(out[i]);out[i]=em?hash(em)+'@h':'';}
     else if(i===H.DAY_PHONE||i===H.EVE_PHONE||i===H.CELL_PHONE){out[i]=hashPhoneDigits(hash,out[i]);}
-    else out[i]='';
+    else if(PII_COL_HEADERS.includes(String(hdr[i]||'').trim())){out[i]='';}  // duplicate PII column
   }
   return out;
 }
@@ -600,15 +679,27 @@ function recomputeRaw(rows,H,storeId,fromStr,toStr){
   const toMs=toStr?new Date(toStr+'T23:59:59.999').getTime():null;
   const inRange=ms=>{if(isNaN(ms))return false;if(fromMs!==null&&ms<fromMs)return false;if(toMs!==null&&ms>toMs)return false;return true;};
   const noFilter=(fromMs===null&&toMs===null);
-  const visitStats={};
+  // One Showroom Visit ID = one visit. The same visit rides along on every lead row
+  // belonging to that customer, so tallying per row counted it once per row —
+  // inflating visits (and Vis%) and deflating WU%. Collapse to one entry per ID
+  // first: rep is first-seen-wins, and Write Up / Trade Appraisal are OR-ed across
+  // the visit's rows so a flag set on any single row still counts exactly once.
+  const visitById=new Map();
   filtered.forEach(r=>{
     const vid=(r[H.VISIT_ID]||'').trim();if(!vid)return;
     if((r[H.VISIT_RESULT]||'').trim()==='Deleted')return;
     const ag=(r[H.ASSIGNED_GROUP]||'').trim();if(MGR_GROUPS.has(ag))return;
     const rep=(r[H.SALES_REP]||'').trim();if(!rep)return;
     if(!noFilter){const vStartMs=Date.parse(r[H.VISIT_START]||'');if(!inRange(vStartMs))return;}
-    const s=visitStats[rep]=visitStats[rep]||{visits:0,write_ups:0,trades:0};
-    s.visits++;if((r[H.WRITE_UP]||'').trim()==='Y')s.write_ups++;if((r[H.TRADE_APP]||'').trim()==='Y')s.trades++;
+    const wu=(r[H.WRITE_UP]||'').trim()==='Y',tr=(r[H.TRADE_APP]||'').trim()==='Y';
+    const v=visitById.get(vid);
+    if(v){if(wu)v.wu=true;if(tr)v.tr=true;return;}
+    visitById.set(vid,{rep,wu,tr});
+  });
+  const visitStats={};
+  visitById.forEach(v=>{
+    const s=visitStats[v.rep]=visitStats[v.rep]||{visits:0,write_ups:0,trades:0};
+    s.visits++;if(v.wu)s.write_ups++;if(v.tr)s.trades++;
   });
   const classified=dedup.map(r=>{
     const origMs=Date.parse(r[H.LEAD_ORIG]||'');const modMs=Date.parse(r[H.LEAD_MOD]||'');const sold=isDelivered(r,H);
@@ -635,6 +726,9 @@ function recomputeRaw(rows,H,storeId,fromStr,toStr){
     const validLeads=inPeriodLeads.filter(c=>!BAD_STATUSES.has((c.row[H.LEAD_STATUS]||'').trim()));
     const deliveries=cr.filter(c=>c.inSalePeriod);
     const priorDels=cr.filter(c=>c.inSalePeriod&&!c.inLeadPeriod).length;
+    // Subset of deliveries that are sold-but-not-yet-funded. Counted in `delivered`
+    // above; surfaced separately so the at-risk portion of the number is visible.
+    const pendingDels=deliveries.filter(c=>isPendingSold(c.row,H)).length;
     const internet=validLeads.filter(c=>(c.row[H.LEAD_TYPE]||'').trim()==='Internet');
     const adj=[];
     internet.forEach(c=>{
@@ -653,10 +747,10 @@ function recomputeRaw(rows,H,storeId,fromStr,toStr){
     const multi=validLeads.filter(c=>{let cnt=0;if(c.row[H.LAST_PHONE]?.trim())cnt++;if(c.row[H.LAST_EMAIL]?.trim())cnt++;if(c.row[H.LAST_TEXT]?.trim())cnt++;return cnt>=2;}).length;
     const multiChRate=validLeads.length?multi/validLeads.length:0;
     const vs=visitStats[rep]||{visits:0,write_ups:0,trades:0};
-    reps.push({name:rep,total_leads:inPeriodLeads.length,valid_leads:validLeads.length,bad_leads:inPeriodLeads.length-validLeads.length,delivered:deliveries.length,conv_pct:validLeads.length?deliveries.length/validLeads.length:0,internet_leads:internet.length,med_adj_min:mA,speed_tier:speedTier,contact_rate:contactRate,multi_ch_rate:multiChRate,visits:vs.visits,write_ups:vs.write_ups,writeup_rate:vs.visits?vs.write_ups/vs.visits:0,valid_to_visit_rate:validLeads.length?vs.visits/validLeads.length:0,trades:vs.trades,prior_period_deliveries:priorDels});
+    reps.push({name:rep,total_leads:inPeriodLeads.length,valid_leads:validLeads.length,bad_leads:inPeriodLeads.length-validLeads.length,delivered:deliveries.length,conv_pct:validLeads.length?deliveries.length/validLeads.length:0,internet_leads:internet.length,med_adj_min:mA,speed_tier:speedTier,contact_rate:contactRate,multi_ch_rate:multiChRate,visits:vs.visits,write_ups:vs.write_ups,writeup_rate:vs.visits?vs.write_ups/vs.visits:0,valid_to_visit_rate:validLeads.length?vs.visits/validLeads.length:0,trades:vs.trades,prior_period_deliveries:priorDels,pending_deliveries:pendingDels});
   });
   reps.sort((a,b)=>b.delivered-a.delivered||b.conv_pct-a.conv_pct);
-  const totals={total_leads:reps.reduce((s,r)=>s+r.total_leads,0),valid_leads:reps.reduce((s,r)=>s+r.valid_leads,0),bad_leads:reps.reduce((s,r)=>s+r.bad_leads,0),delivered:reps.reduce((s,r)=>s+r.delivered,0),conv_pct:0,visits:reps.reduce((s,r)=>s+r.visits,0),write_ups:reps.reduce((s,r)=>s+r.write_ups,0),writeup_rate:0,rep_count:reps.length,internet_leads:reps.reduce((s,r)=>s+r.internet_leads,0)};
+  const totals={total_leads:reps.reduce((s,r)=>s+r.total_leads,0),valid_leads:reps.reduce((s,r)=>s+r.valid_leads,0),bad_leads:reps.reduce((s,r)=>s+r.bad_leads,0),delivered:reps.reduce((s,r)=>s+r.delivered,0),pending_deliveries:reps.reduce((s,r)=>s+(r.pending_deliveries||0),0),conv_pct:0,visits:reps.reduce((s,r)=>s+r.visits,0),write_ups:reps.reduce((s,r)=>s+r.write_ups,0),writeup_rate:0,rep_count:reps.length,internet_leads:reps.reduce((s,r)=>s+r.internet_leads,0)};
   totals.conv_pct=totals.valid_leads?totals.delivered/totals.valid_leads:0;
   totals.writeup_rate=totals.visits?totals.write_ups/totals.visits:0;
   const allDates=rows.map(r=>r[H.LEAD_ORIG]||'').filter(Boolean).map(s=>{if(/^\d{2}\/\d{2}\/\d{4}/.test(s)){const[m,d,y]=s.slice(0,10).split('/');return`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;}return s.slice(0,10);}).filter(s=>/^\d{4}-\d{2}-\d{2}/.test(s));
@@ -778,13 +872,29 @@ const MONTH_NAME_MAP={
   aug:'08',august:'08',sep:'09',sept:'09',september:'09',oct:'10',
   october:'10',nov:'11',november:'11',dec:'12',december:'12'
 };
+// CANONICAL filename → period parser. Must stay byte-identical to the copy in
+// netlify/functions/store-ingest.mjs — the manual browser upload and the automated
+// Gmail ingest have to file the same file under the same period, or the two paths
+// silently create two different months from one CSV.
+// Accepted, in order:
+//   1. <store>_<dd>_<mm>_<yy>.csv           hammond_15_03_26.csv       → 2026-03
+//   2. <store>_<monthname|abbr>_<yy>.csv    breaux_bridge_june_26.csv  → 2026-06
+//   3. ..._<monthname|abbr>_<yy>_<suffix>   hammond_june_26_v2.csv     → 2026-06
 function periodFromFileName(name){
-  // Format 1: storename_dd_mm_yy.csv
-  const m1=String(name).match(/_(\d{2})_(\d{2})_(\d{2})\.csv$/i);
-  if(m1){const[,dd,mm,yy]=m1;return`20${yy}-${mm}`;}
+  const s=String(name||'');
+  // Format 1: storename_dd_mm_yy.csv — day first, month second.
+  const m1=s.match(/_(\d{2})_(\d{2})_(\d{2})\.csv$/i);
+  if(m1){const mm=m1[2],yy=m1[3];if(+mm>=1&&+mm<=12)return`20${yy}-${mm}`;}
   // Format 2: storename_monthname_yy.csv  (e.g. hattiesburg_march_26.csv)
-  const m2=String(name).match(/_([a-z]+)_(\d{2})\.csv$/i);
-  if(m2){const[,mon,yy]=m2;const mm=MONTH_NAME_MAP[mon.toLowerCase()];if(mm)return`20${yy}-${mm}`;}
+  const m2=s.match(/_([a-z]+)_(\d{2})\.csv$/i);
+  if(m2){const mm=MONTH_NAME_MAP[m2[1].toLowerCase()];if(mm)return`20${m2[2]}-${mm}`;}
+  // Format 3: as above but with trailing suffix tokens — scan right-to-left.
+  const tokens=s.replace(/\.csv$/i,'').toLowerCase().split('_');
+  for(let i=tokens.length-1;i>=1;i--){
+    if(!/^\d{2}$/.test(tokens[i]))continue;
+    const mm=MONTH_NAME_MAP[tokens[i-1]];
+    if(mm)return`20${tokens[i]}-${mm}`;
+  }
   return null;
 }
 function periodLabel(period){
@@ -833,11 +943,10 @@ function getEffectiveDateTo(id,period){
 /* ═══════════════════════════════════════════════════════════════
    HELPERS
 ═══════════════════════════════════════════════════════════════ */
+const PENDING_TIP='Sold but not yet funded (e.g. &#8220;Sold Pending Finance&#8221;). These ARE counted in Deliveries and Cov%. If the deal funds it stays counted; if it reverts to active, lost or bad it drops off the next time this month is re-scored. Closed months stay frozen.';
 const PRIOR_TIP='Deliveries in this window whose lead didn&#8217;t originate here &#8212; carried over from an earlier period, or an extra unit sold to a customer already counted elsewhere.';
 const pct=v=>(v*100).toFixed(1)+'%';
-const fmtMin=v=>{if(v===null||v===undefined)return'N/A';if(v===0)return'<1m';if(v<60)return Math.round(v)+'m';return(v/60).toFixed(1)+'h';};
 const convCls=v=>v>=.20?'cg':v>=.10?'ca':'cr';
-const speedPill=t=>{const m={Full:'sp-f',Strong:'sp-s',Partial:'sp-p',Minimum:'sp-m','N/A':'sp-n'};return`<span class="sp ${m[t]||'sp-n'}">${t}</span>`;};
 
 /* ═══════════════════════════════════════════════════════════════
    SORT
@@ -854,20 +963,22 @@ function mergeSnapshotData(snaps){
   snaps.forEach(snap=>{
     if(!snap)return;
     snap.reps.forEach(r=>{
-      if(!repMap[r.name])repMap[r.name]={name:r.name,total_leads:0,bad_leads:0,valid_leads:0,visits:0,write_ups:0,delivered:0};
+      if(!repMap[r.name])repMap[r.name]={name:r.name,total_leads:0,bad_leads:0,valid_leads:0,visits:0,write_ups:0,delivered:0,pending_deliveries:0};
       const m=repMap[r.name];
       m.total_leads+=r.total_leads||0;m.bad_leads+=r.bad_leads||0;m.valid_leads+=r.valid_leads||0;
-      m.visits+=r.visits||0;m.write_ups+=r.write_ups||0;m.delivered+=r.delivered||0;
+      m.visits+=r.visits||0;m.write_ups+=r.write_ups||0;m.delivered+=r.delivered||0;m.pending_deliveries+=r.pending_deliveries||0;
     });
   });
+  // Rate keys must match the ones recomputeRaw() emits — tableHTML()/summaryHTML()
+  // read valid_to_visit_rate and writeup_rate, so anything else renders as NaN%.
   const reps=Object.values(repMap).map(r=>({...r,
     conv_pct:r.valid_leads?r.delivered/r.valid_leads:0,
-    vis_pct:r.valid_leads?r.visits/r.valid_leads:0,
-    wu_pct:r.visits?r.write_ups/r.visits:0}));
-  let tl=0,bl=0,vl=0,vi=0,wu=0,del=0;
-  reps.forEach(r=>{tl+=r.total_leads;bl+=r.bad_leads;vl+=r.valid_leads;vi+=r.visits;wu+=r.write_ups;del+=r.delivered;});
-  const totals={total_leads:tl,bad_leads:bl,valid_leads:vl,visits:vi,write_ups:wu,delivered:del,
-    conv_pct:vl?del/vl:0,vis_pct:vl?vi/vl:0,wu_pct:vi?wu/vi:0,rep_count:reps.length};
+    valid_to_visit_rate:r.valid_leads?r.visits/r.valid_leads:0,
+    writeup_rate:r.visits?r.write_ups/r.visits:0}));
+  let tl=0,bl=0,vl=0,vi=0,wu=0,del=0,pnd=0;
+  reps.forEach(r=>{tl+=r.total_leads;bl+=r.bad_leads;vl+=r.valid_leads;vi+=r.visits;wu+=r.write_ups;del+=r.delivered;pnd+=r.pending_deliveries||0;});
+  const totals={total_leads:tl,bad_leads:bl,valid_leads:vl,visits:vi,write_ups:wu,delivered:del,pending_deliveries:pnd,
+    conv_pct:vl?del/vl:0,valid_to_visit_rate:vl?vi/vl:0,writeup_rate:vi?wu/vi:0,rep_count:reps.length};
   return{reps,totals};
 }
 function getLiveData(id,period){
@@ -1061,7 +1172,7 @@ function tableHTML(reps,totals){
     <td class="r">${r.valid_leads}</td>
     <td class="r">${r.visits}</td>
     <td class="r">${r.write_ups}</td>
-    <td class="r"><span class="del-val">${r.delivered}</span>${r.prior_period_deliveries?`<span class="sub tip" data-tip="${PRIOR_TIP}">${r.prior_period_deliveries} prior</span>`:''}</td>
+    <td class="r"><span class="del-val">${r.delivered}</span>${r.pending_deliveries?`<span class="sub tip pend" data-tip="${PENDING_TIP}">${r.pending_deliveries} pending sold</span>`:''}${r.prior_period_deliveries?`<span class="sub tip" data-tip="${PRIOR_TIP}">${r.prior_period_deliveries} prior</span>`:''}</td>
     <td class="r"><span class="conv-val ${cc}">${r.valid_leads?pct(r.conv_pct):'—'}</span></td>
     <td class="r ${vvr>=.5?'cg':vvr>=.25?'ca':'cr'}">${r.valid_leads?pct(vvr):'—'}</td>
     <td class="r ${r.writeup_rate>=.5?'cg':r.writeup_rate>=.3?'ca':'cr'}">${r.visits?pct(r.writeup_rate):'—'}</td>
@@ -1075,7 +1186,7 @@ function tableHTML(reps,totals){
     <td class="r">${totals.valid_leads}</td>
     <td class="r">${totals.visits}</td>
     <td class="r">${totals.write_ups}</td>
-    <td class="r"><span class="del-val">${totals.delivered}</span></td>
+    <td class="r"><span class="del-val">${totals.delivered}</span>${totals.pending_deliveries?`<span class="sub tip pend" data-tip="${PENDING_TIP}">${totals.pending_deliveries} pending sold</span>`:''}</td>
     <td class="r"><span class="conv-val ${tc}">${totals.valid_leads?pct(totals.conv_pct):'—'}</span></td>
     <td class="r">${totals.valid_leads?pct(totVVR):'—'}</td>
     <td class="r">${totals.visits?pct(totals.writeup_rate):'—'}</td>
@@ -1093,7 +1204,7 @@ function summaryHTML(reps,totals,period){
     <div class="kpi"><div class="kpi-v b">${totals.total_leads}</div><div class="kpi-l">All Leads</div><div class="kpi-s">${totals.bad_leads} bad · ${totals.valid_leads} valid</div></div>
     <div class="kpi"><div class="kpi-v">${totals.visits}</div><div class="kpi-l">Visits</div><div class="kpi-s">${totals.valid_leads?pct(sVVR):''} of valid leads</div></div>
     <div class="kpi"><div class="kpi-v">${totals.write_ups}</div><div class="kpi-l">Write-ups</div><div class="kpi-s">${totals.visits?pct(totals.writeup_rate):'—'} WU%</div></div>
-    <div class="kpi"><div class="kpi-v g">${totals.delivered}</div><div class="kpi-l">Deliveries</div><div class="kpi-s">per Lead Last Modified Date</div></div>
+    <div class="kpi"><div class="kpi-v g">${totals.delivered}</div><div class="kpi-l">Deliveries</div><div class="kpi-s">${totals.pending_deliveries?`<span class="pend">${totals.pending_deliveries} pending sold</span> · `:''}per Lead Last Modified Date</div></div>
     <div class="kpi"><div class="kpi-v ${cc}">${totals.valid_leads?pct(totals.conv_pct):'—'}</div><div class="kpi-l">Cov%</div><div class="kpi-s">Deliveries ÷ Valid Leads</div></div>
   </div>`;
   return strip+tableHTML(reps,totals);
@@ -1377,7 +1488,11 @@ function processUpload(){
         // Build PII-stripped rows for server + localStorage (non-deduped so recompute works correctly)
         const dedupHash=makeDedupHasher();
         const sanitized=parsed.rows.map(r=>sanitizeRow(r,parsed.H,dedupHash));
-        cacheRows(storeId,period,{rows:sanitized,H:(()=>{const Hc={};for(const k of Object.keys(parsed.H)){if(k==='_piiCols')continue;if(typeof parsed.H[k]==='number'||k==='allHeaders')Hc[k]=parsed.H[k];}return Hc;})(),fileName:f.name,uploadedAt:new Date().toISOString()});
+        // Fail closed — if any row could not be sanitised, ship no rows at all.
+        // Date filtering degrades for this period; raw PII never leaves the browser.
+        const rowsSafe=sanitized.every(Boolean);
+        if(!rowsSafe)console.warn('Row sanitisation failed for '+f.name+' — rows not stored.');
+        if(rowsSafe)cacheRows(storeId,period,{rows:sanitized,H:(()=>{const Hc={};for(const k of Object.keys(parsed.H)){if(k==='_piiCols')continue;if(typeof parsed.H[k]==='number'||k==='allHeaders')Hc[k]=parsed.H[k];}return Hc;})(),fileName:f.name,uploadedAt:new Date().toISOString()});
         _rowsFetchFailed.delete(`${storeId}_${period}`);
 
         // Update local cache
@@ -1386,7 +1501,7 @@ function processUpload(){
 
         // POST to server
         if(HAS_BACKEND){
-          const ok=await serverUpload(storeId,period,label,f.name,result,sanitized,(()=>{const Hc={};for(const k of Object.keys(parsed.H)){if(k==='_piiCols')continue;if(typeof parsed.H[k]==='number'||k==='allHeaders')Hc[k]=parsed.H[k];}return Hc;})());
+          const ok=await serverUpload(storeId,period,label,f.name,result,rowsSafe?sanitized:null,(()=>{const Hc={};for(const k of Object.keys(parsed.H)){if(k==='_piiCols')continue;if(typeof parsed.H[k]==='number'||k==='allHeaders')Hc[k]=parsed.H[k];}return Hc;})());
           if(stEl)stEl.innerHTML=ok?`<span class="fi-ok">✓ Saved to server · ${result.totals.rep_count} reps</span>`:`<span class="fi-ok">✓ Saved locally · ${result.totals.rep_count} reps</span>`;
         } else {
           if(stEl)stEl.innerHTML=`<span class="fi-ok">✓ ${result.totals.rep_count} reps (local only)</span>`;
@@ -1402,6 +1517,171 @@ function processUpload(){
 /* ═══════════════════════════════════════════════════════════════
    MANAGE PERIODS MODAL
 ═══════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   METHODOLOGY TAB  (open to all viewers — NOT admin-gated)
+═══════════════════════════════════════════════════════════════ */
+const mEsc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// Find any period in this browser that still has row-level data, so the live
+// status diagnostic can show the actual values coming out of VinSolutions.
+function methRowSource(){
+  const cands=[];
+  if(curStore!=='network'){const p=getActivePeriod(curStore);if(p&&p!=='__all__')cands.push([curStore,p]);}
+  else{const np=getNetPeriod();if(np&&np!=='__all__')STORES.forEach(s=>cands.push([s.id,np]));}
+  STORES.forEach(s=>getStorePeriods(s.id).forEach(p=>cands.push([s.id,p.period])));
+  for(const[id,p]of cands){
+    const src=_sessionRows[`${id}_${p}`]||getCachedRows(id,p);
+    if(src&&src.rows&&src.H&&typeof src.H.LEAD_STATUS==='number')return{rows:src.rows,H:src.H,id,period:p};
+  }
+  return null;
+}
+function methStatusDiag(){
+  const src=methRowSource();
+  if(!src)return'<div class="meth-note">No row-level data is loaded in this browser yet, so the live status list can’t be shown. Open a store that has a period loaded, or re-upload a month, then reopen this tab.</div>';
+  const store=STORES.find(s=>s.id===src.id);
+  const tally=idx=>{const m={};src.rows.forEach(r=>{const v=(r[idx]||'').trim();if(v)m[v]=(m[v]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]);};
+  const render=(entries,kind)=>entries.length?entries.map(([v,c])=>{
+    const pend=matchesPendingSold(v);
+    const sold=kind==='type'&&v==='Sold';
+    const tag=pend?' <span style="color:var(--gold)">← pending sold</span>'
+             :sold?' <span style="color:var(--grn)">← counts as delivered</span>'
+             :kind==='status'&&BAD_STATUSES.has(v)?' <span style="color:var(--red)">← bad lead</span>':'';
+    return`<div class="meth-sv${pend||sold?' hit':''}"><span class="meth-sv-n">${mEsc(v)}${tag}</span><span class="meth-sv-c">${c}</span></div>`;
+  }).join(''):'<div class="meth-sv"><span class="meth-sv-n" style="color:var(--t3)">(no values)</span></div>';
+  const st=tally(src.H.LEAD_STATUS),ty=tally(src.H.LEAD_STATUS_TYPE);
+  const anyPending=[...st,...ty].some(([v])=>matchesPendingSold(v));
+  return`<div class="meth-diag">
+      <div class="meth-diag-h">Lead Status Type · ${mEsc(store?store.name:src.id)} · ${periodLabel(src.period)}</div>
+      ${render(ty,'type')}
+    </div>
+    <div class="meth-diag">
+      <div class="meth-diag-h">Lead Status · same file</div>
+      ${render(st,'status')}
+    </div>
+    ${anyPending
+      ? '<div class="meth-warn"><strong>Pending-finance deals were found in this file</strong> and are highlighted above. They are counted in Deliveries and Cov%, and flagged with a <span style="color:var(--gold)">pending sold</span> note under the Deliveries number.</div>'
+      : '<div class="meth-note">No pending-finance wording was found in this file. If your store uses different wording for a sold-but-not-yet-funded deal, it will appear in the lists above — send it to whoever maintains the dashboard so the rule can be extended.</div>'}`;
+}
+function methodologyHTML(){
+  const secs=[
+    ['overview','What this dashboard is'],
+    ['columns','Every column, defined'],
+    ['deliveries','What counts as a delivery'],
+    ['who','Who appears in the table'],
+    ['which','Which leads count'],
+    ['dedup','One customer, one lead'],
+    ['periods','Periods, frozen months & date filters'],
+    ['colours','What the colours mean'],
+    ['live','Live status check on your data'],
+    ['limits','Known limits'],
+  ];
+  return`<div class="meth-nav">${secs.map(([k,l])=>`<a href="#meth-${k}" onclick="document.getElementById('meth-${k}').scrollIntoView({behavior:'smooth',block:'start'});return false;">${l}</a>`).join('')}</div>
+
+<div class="meth-sec" id="meth-overview">
+  <div class="meth-h">What this dashboard is</div>
+  <p class="meth-p">This is a <strong>raw activity scorecard</strong>, not a ranking engine. There is deliberately <strong>no composite score, no weighting, no index and no grade</strong> — every figure is either a plain count taken straight from the VinSolutions master lead export, or one count divided by another. Nothing is scaled, curved or adjusted.</p>
+  <p class="meth-p">There is also <strong>no lead minimum</strong>. A rep with 4 leads appears on exactly the same terms as a rep with 400. Read percentages on small lead counts with that in mind — one deal moves a small denominator a long way.</p>
+  <div class="meth-note">Each month is scored from that month’s own CSV export. The dashboard never edits your data — it filters, de-duplicates and counts it.</div>
+</div>
+
+<div class="meth-sec" id="meth-columns">
+  <div class="meth-h">Every column, defined</div>
+  <div class="meth-def"><div class="meth-term">Rep</div><div class="meth-desc">The <span class="meth-k">Sales Rep</span> on the lead. Reps who never appear on a qualifying lead or visit don’t appear at all.</div></div>
+  <div class="meth-def"><div class="meth-term">All Leads</div><div class="meth-desc">Every lead assigned to that rep that originated in the period, after de-duplication and after the exclusions below. This is the raw pipeline the rep was handed.</div></div>
+  <div class="meth-def"><div class="meth-term">Bad Leads</div><div class="meth-desc">The subset of All Leads whose <span class="meth-k">Lead Status</span> is one of ten disqualifying values — bad credit, bad or no contact information, dealer test lead, duplicate lead, no intent to buy, out of market, purchased a different brand from another dealer, purchased the same brand from another dealer, purchased from a private party, or requested no further contact. These are not held against the rep.</div></div>
+  <div class="meth-def"><div class="meth-term">Valid Leads</div><div class="meth-desc">All Leads minus Bad Leads. <strong>This is the denominator for Cov% and Vis%</strong> — reps are measured only on leads they could actually work.<span class="meth-f">Valid = All Leads − Bad Leads</span></div></div>
+  <div class="meth-def"><div class="meth-term">Visits</div><div class="meth-desc">Distinct showroom visits credited to the rep. Counted by <span class="meth-k">Showroom Visit ID</span>, so one visit counts once no matter how many lead records it touches. Visits marked <span class="meth-k">Deleted</span>, and visits assigned to a Manager, Reception or Admin user group, are excluded.</div></div>
+  <div class="meth-def"><div class="meth-term">Write-ups</div><div class="meth-desc">Distinct visits where <span class="meth-k">Write Up</span> is <span class="meth-k">Y</span>. If any record for a visit is marked written up, that visit counts once.</div></div>
+  <div class="meth-def"><div class="meth-term">Deliveries</div><div class="meth-desc">Units sold in the period — see <a href="#meth-deliveries" onclick="document.getElementById('meth-deliveries').scrollIntoView({behavior:'smooth'});return false;" style="color:var(--gold)">the next section</a>, which is the part worth reading closely.</div></div>
+  <div class="meth-def"><div class="meth-term">Cov%</div><div class="meth-desc">Closing rate on workable leads.<span class="meth-f">Cov% = Deliveries ÷ Valid Leads</span></div></div>
+  <div class="meth-def"><div class="meth-term">Vis%</div><div class="meth-desc">How much of the workable pipeline the rep got in the door.<span class="meth-f">Vis% = Visits ÷ Valid Leads</span></div></div>
+  <div class="meth-def"><div class="meth-term">WU%</div><div class="meth-desc">How often a visit turned into a written deal.<span class="meth-f">WU% = Write-ups ÷ Visits</span></div></div>
+  <div class="meth-def"><div class="meth-term">TOTALS row</div><div class="meth-desc">Counts are summed down the column. Percentages are <strong>recalculated from those sums</strong> — they are not the average of the rep percentages, so a high-volume rep moves the store rate more than a low-volume one.</div></div>
+</div>
+
+<div class="meth-sec" id="meth-deliveries">
+  <div class="meth-h">What counts as a delivery</div>
+  <p class="meth-p">A lead counts as delivered when the export marks it <strong>sold</strong>. Nothing else — not an appointment, not a write-up, not a deposit — counts. Two things sit underneath that number and are labelled directly on the cell:</p>
+  <div class="meth-def"><div class="meth-term" style="color:var(--gold)">N pending sold</div><div class="meth-desc"><strong>Sold but not yet funded</strong> — typically <span class="meth-k">Sold Pending Finance</span>. These <strong>do count</strong> in Deliveries and Cov%, and are flagged so the at-risk portion of the number is visible.<br><br>If the deal funds, it simply stays counted. If it falls through and moves to active, lost, bad or any status other than sold, it <strong>drops off (−1)</strong> the next time that month is re-scored. That is why the current month keeps being re-uploaded.</div></div>
+  <div class="meth-def"><div class="meth-term">N prior</div><div class="meth-desc">Deliveries closed in this window whose lead <strong>originated in an earlier month</strong>, or an extra unit sold to a customer already counted once. The sale is credited to the month it closed in.</div></div>
+  <div class="meth-warn"><strong>Closed months stay frozen.</strong> Once a month stops being re-uploaded, its numbers are locked at whatever they last showed. A July deal that was pending at July’s close stays in July as pending; if it funds in August it shows up as an August delivery (tagged <em>prior</em>, since the lead came from July). Deliveries are credited to the month they <em>closed</em>, using <span class="meth-k">Lead Last Modified Date</span>.</div>
+  <div class="meth-note">Because carry-over and extra-unit sales land in the numerator while the denominator only counts leads that <em>started</em> in the window, <strong>Cov% can exceed 100%</strong> in a light lead month. That is expected, not a bug — the <em>prior</em> tag shows how much of the count came from outside the window.</div>
+</div>
+
+<div class="meth-sec" id="meth-who">
+  <div class="meth-h">Who appears in the table</div>
+  <p class="meth-p">Not every name in the export is a tracked rep. Three groups are removed before any counting happens:</p>
+  <ul class="meth-list">
+    <li><strong>An exclusion list</strong> — ${BLACKLIST.size} named individuals (managers, owners, desk and finance staff) are filtered out entirely so their activity never lands in a rep’s row or the store totals. The list is maintained in the dashboard code and applies to every rooftop.</li>
+    <li><strong>System and house accounts</strong> — automated senders and house-agent accounts are dropped by name pattern.</li>
+    <li><strong>Manager, Reception and Admin user groups</strong> — excluded from showroom visit counting, so desk-logged visits don’t inflate a rep’s Visits or dilute WU%.</li>
+  </ul>
+  <div class="meth-note">If a rep is missing from the table entirely, they either had no qualifying leads or visits in the period, or their name is on the exclusion list.</div>
+</div>
+
+<div class="meth-sec" id="meth-which">
+  <div class="meth-h">Which leads count</div>
+  <ul class="meth-list">
+    <li><strong>700 Credit leads are removed</strong> from every store — these are credit-application pings, not shopper leads.</li>
+    <li><strong>Airstream leads are separated.</strong> On a store tab, Airstream leads are removed; the Airstream <em>brand</em> tab shows only Airstream leads, pooled across all rooftops. A lead is treated as Airstream if its source, source group or make says so (including <span class="meth-k">Aimbase</span>). This means a store’s tab and the Airstream tab never double-count the same lead.</li>
+    <li><strong>Bad-status leads still appear in All Leads</strong> but are pulled out of Valid Leads, so they never drag down Cov% or Vis%.</li>
+  </ul>
+</div>
+
+<div class="meth-sec" id="meth-dedup">
+  <div class="meth-h">One customer, one lead</div>
+  <p class="meth-p">The same shopper often shows up several times in an export — a web form, a phone-up, a walk-in. Records are merged into a single customer when they share a <strong>name, an email address, or a phone number</strong>. Merging is chained: if A shares a phone with B and B shares an email with C, all three are one customer.</p>
+  <p class="meth-p">The surviving record prefers a <strong>sold</strong> row, then the most recent one. So a customer who touched the store five times counts as <strong>one lead</strong>, not five — which keeps Cov% honest.</p>
+  <div class="meth-note">A customer who bought <strong>two different units</strong> still counts as one lead but <strong>two deliveries</strong>, matched on distinct stock numbers.</div>
+  <div class="meth-warn">Side effect worth knowing: a <strong>shared phone number</strong> — a household line, or a business number on several records — will merge people the system reads as one customer.</div>
+</div>
+
+<div class="meth-sec" id="meth-periods">
+  <div class="meth-h">Periods, frozen months &amp; date filters</div>
+  <p class="meth-p">Each month is a separate stored snapshot, scored from that month’s CSV. The month a file belongs to comes from its <strong>filename</strong>, not from the data inside it.</p>
+  <p class="meth-p">The <strong>Date</strong> buttons re-score the period live from row-level data. <span class="meth-k">MTD</span>, <span class="meth-k">Last 30</span> and <span class="meth-k">Last 7</span> are measured against the last day of data in the period you are viewing — not against today’s real date — so a historical month isn’t compared against a calendar that has moved on. If a period predates row-level storage, the dashboard says date filtering is unavailable rather than quietly showing you unfiltered numbers under a filtered label.</p>
+  <p class="meth-p"><strong>All Periods</strong> sums every stored month. Note that de-duplication happens <em>within</em> a month, so a customer who appears in two different months counts once in each.</p>
+  <p class="meth-p"><strong>Month-over-Month</strong> cards compare consecutive periods: leads and deliveries as plain differences, Cov% as a <strong>percentage-point</strong> change.</p>
+</div>
+
+<div class="meth-sec" id="meth-colours">
+  <div class="meth-h">What the colours mean</div>
+  <table class="meth-tbl">
+    <thead><tr><th>Column</th><th class="c" style="color:var(--grn)">Green</th><th class="c" style="color:var(--gold)">Amber</th><th class="c" style="color:var(--red)">Red</th></tr></thead>
+    <tbody>
+      <tr><td>Cov%</td><td class="c">20% and above</td><td class="c">10–20%</td><td class="c">under 10%</td></tr>
+      <tr><td>Vis%</td><td class="c">50% and above</td><td class="c">25–50%</td><td class="c">under 25%</td></tr>
+      <tr><td>WU%</td><td class="c">50% and above</td><td class="c">30–50%</td><td class="c">under 30%</td></tr>
+      <tr><td>Bad Leads</td><td class="c">—</td><td class="c">—</td><td class="c">any above zero</td></tr>
+    </tbody>
+  </table>
+  <div class="meth-note">These are fixed thresholds applied to the displayed value. They are visual guides, not targets set per store or per rep.</div>
+</div>
+
+<div class="meth-sec" id="meth-live">
+  <div class="meth-h">Live status check on your data</div>
+  <p class="meth-p">Every status value present in the most recent file loaded in this browser, with how many records carry it. This is the definitive answer to “is <em>this</em> status being counted?” for your own data.</p>
+  ${methStatusDiag()}
+</div>
+
+<div class="meth-sec" id="meth-limits">
+  <div class="meth-h">Known limits</div>
+  <ul class="meth-list">
+    <li><strong>Small denominators swing hard.</strong> No lead minimum is applied, so a rep with a handful of leads can show an extreme percentage.</li>
+    <li><strong>Cov% can exceed 100%</strong> when carry-over deals close in a light lead month — by design.</li>
+    <li><strong>Shared phone numbers</strong> can merge two people into one customer.</li>
+    <li><strong>A lead with an unreadable origination date</strong> is treated as in-period, including inside narrow date ranges.</li>
+    <li><strong>Response speed, contact rate, multi-channel rate and trade appraisals</strong> are calculated behind the scenes and given to the AI Coach, but are not shown as columns here.</li>
+  </ul>
+  <div class="meth-foot">Everything above is read directly from the dashboard’s scoring code, which runs identically in your browser and on the server that ingests the automated exports. Figures update whenever a period is re-uploaded.</div>
+</div>`;
+}
+function openMethodology(){
+  const el=document.getElementById('meth-body');
+  if(el)el.innerHTML=methodologyHTML();
+  openOv('ov-method');
+}
+
 function openAdmin(){
   if(sessionStorage.getItem('adminUnlocked')==='1')showAdminContent();
   else showAdminLock();

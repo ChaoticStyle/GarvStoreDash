@@ -16,27 +16,45 @@ const CORS = {
 
 // ── Period helpers ────────────────────────────────────────────────────
 
-const MONTH_NAMES = [
-  'january','february','march','april','may','june',
-  'july','august','september','october','november','december',
-];
-const MONTH_ABBR  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-// "hammond_june_26.csv" → { period: "2026-06", label: "Jun 2026" }
-// Scans tokens right-to-left: YY then month name, ignores store-name tokens.
-function periodFromFileName(fileName) {
-  const base   = (fileName || '').replace(/\.csv$/i, '').toLowerCase();
-  const tokens = base.split('_');
-  for (let i = tokens.length - 1; i >= 1; i--) {
-    const maybeYY = tokens[i];
-    if (!/^\d{2}$/.test(maybeYY)) continue;
-    const monthIdx = MONTH_NAMES.indexOf(tokens[i - 1]);
-    if (monthIdx === -1) continue;
-    const year   = 2000 + parseInt(maybeYY, 10);
-    const mm     = String(monthIdx + 1).padStart(2, '0');
-    return { period: `${year}-${mm}`, label: `${MONTH_ABBR[monthIdx]} ${year}` };
+const MONTH_NAME_MAP = {
+  jan:'01',january:'01',feb:'02',february:'02',mar:'03',march:'03',
+  apr:'04',april:'04',may:'05',jun:'06',june:'06',jul:'07',july:'07',
+  aug:'08',august:'08',sep:'09',sept:'09',september:'09',oct:'10',
+  october:'10',nov:'11',november:'11',dec:'12',december:'12'
+};
+
+// CANONICAL filename → period parser. Must stay byte-identical to the copy in
+// public/index.html — the manual browser upload and the automated Gmail ingest
+// have to file the same file under the same period, or the two paths silently
+// create two different months from one CSV.
+// Accepted, in order:
+//   1. <store>_<dd>_<mm>_<yy>.csv           hammond_15_03_26.csv       → 2026-03
+//   2. <store>_<monthname|abbr>_<yy>.csv    breaux_bridge_june_26.csv  → 2026-06
+//   3. ..._<monthname|abbr>_<yy>_<suffix>   hammond_june_26_v2.csv     → 2026-06
+function periodFromFileName(name){
+  const s=String(name||'');
+  // Format 1: storename_dd_mm_yy.csv — day first, month second.
+  const m1=s.match(/_(\d{2})_(\d{2})_(\d{2})\.csv$/i);
+  if(m1){const mm=m1[2],yy=m1[3];if(+mm>=1&&+mm<=12)return`20${yy}-${mm}`;}
+  // Format 2: storename_monthname_yy.csv  (e.g. hattiesburg_march_26.csv)
+  const m2=s.match(/_([a-z]+)_(\d{2})\.csv$/i);
+  if(m2){const mm=MONTH_NAME_MAP[m2[1].toLowerCase()];if(mm)return`20${m2[2]}-${mm}`;}
+  // Format 3: as above but with trailing suffix tokens — scan right-to-left.
+  const tokens=s.replace(/\.csv$/i,'').toLowerCase().split('_');
+  for(let i=tokens.length-1;i>=1;i--){
+    if(!/^\d{2}$/.test(tokens[i]))continue;
+    const mm=MONTH_NAME_MAP[tokens[i-1]];
+    if(mm)return`20${tokens[i]}-${mm}`;
   }
   return null;
+}
+
+// "2026-06" → "Jun 2026". Mirrors periodLabel() in public/index.html.
+function labelFromPeriod(period) {
+  const [year, month] = String(period || '').split('-');
+  return (MONTH_ABBR[parseInt(month, 10) - 1] || month) + ' ' + year;
 }
 
 // ── Scoring logic ─────────────────────────────────────────────────────
@@ -89,7 +107,7 @@ const isTrackedRep  = (storeId, name) => {
 const BAD_STATUSES = new Set([
   'Bad Credit','Bad or no contact information','Dealer test lead','Duplicate lead',
   'No intent to buy','Out of market','Purchased different brand different dealer',
-  'Purchased from private party','Requested no further contact',
+  'Purchased from private party','Purchased same brand different dealer','Requested no further contact',
 ]);
 
 function parseMasterCSVv2(txt) {
@@ -150,7 +168,21 @@ function parseMasterCSVv2(txt) {
 const normPhone = p => { const d = String(p||'').replace(/\D/g,''); const s = d.length===11&&d.startsWith('1')?d.slice(1):d; return s.length===10?s:''; };
 const normEmail = e => { const s = String(e||'').trim().toLowerCase(); return s.includes('@')?s:''; };
 const normCust  = c => String(c||'').trim().toLowerCase().replace(/\s+/g,' ');
-const isDelivered = (r, H) => (r[H.LEAD_STATUS_TYPE]||'').trim() === 'Sold';
+/* SOLD PENDING FINANCE — a deal that is sold but not yet funded.
+   VinSolutions carries this as a granular Lead Status (e.g. "Sold Pending Finance");
+   which Lead Status Type it rolls up to varies by store configuration, so match on the
+   status text and stay agnostic about the type. This makes the rule correct either way:
+   if the store's config already rolls it up to Type 'Sold' the deal was always counted
+   and we merely tag it; if it rolls up to 'Open' the deal now gets counted.
+   Dealer policy: pending deals COUNT as deliveries, but are flagged so the exposure is
+   visible. If the deal later funds it stays a delivery; if it reverts to active/lost/bad
+   the next re-score of that month drops it (-1) — which is why the live month must keep
+   being re-uploaded, and why closed months stay frozen at whatever they last showed.
+   Keep this list in sync with the copy in public/index.html. */
+const PENDING_SOLD_PATTERNS = ['sold pending','pending sold','pending finance','pending financing','pending funding','pending lender','awaiting finance','awaiting funding'];
+const matchesPendingSold = v => { const s = String(v||'').trim().toLowerCase().replace(/[_\-\/]+/g,' ').replace(/\s+/g,' '); return s ? PENDING_SOLD_PATTERNS.some(pt => s.includes(pt)) : false; };
+const isPendingSold = (r, H) => matchesPendingSold(r[H.LEAD_STATUS]) || matchesPendingSold(r[H.LEAD_STATUS_CUSTOM]) || matchesPendingSold(r[H.LEAD_STATUS_TYPE]);
+const isDelivered = (r, H) => (r[H.LEAD_STATUS_TYPE]||'').trim() === 'Sold' || isPendingSold(r, H);
 
 function dedupCustomers(rows, H) {
   const n = rows.length;
@@ -198,6 +230,21 @@ function dedupCustomers(rows, H) {
 }
 
 const PII_COL_HEADERS = ['Customer','Email','Daytime Phone','Day Phone','Cell Phone','Evening Phone'];
+// ALLOWLIST — the only columns that may be persisted. Derived from parseMasterCSVv2's
+// H.* mapping plus Stock Number: scoring can only reach columns through those keys, so
+// nothing outside this list can affect any number. Everything else in the export is
+// blanked — VIN, Total Gross, Total Sale Price, Visit Notes, employee-name columns.
+// Keep in sync with public/index.html and upload.mjs.
+const SCORING_COL_HEADERS = [
+  'Customer','Email','Daytime Phone','Day Phone','Cell Phone','Evening Phone',
+  'Stock Number','Dealer','Lead Source','Lead Source Group','Lead Type','Make',
+  'Lead Status','Lead Status Custom','Lead Status Type',
+  'Lead Origination Date','Lead Last Modified Date','Visit Start Date',
+  'Adjusted Response Time (Min)','Contacted Indicator',
+  'Last Attempted Phone Contact','Last Attempted Email Contact','Last Attempted Text Contact Datetime',
+  'Sales Rep','Showroom Visit ID','Assigned User - User Group',
+  'Visit Result','Write Up','Trade Appraisal',
+];
 
 function recomputeRaw(rows, H, storeId, fromStr, toStr) {
   const isAirstreamTab = storeId === 'airstream';
@@ -228,17 +275,30 @@ function recomputeRaw(rows, H, storeId, fromStr, toStr) {
   const inRange = ms => { if (isNaN(ms)) return false; if (fromMs !== null && ms < fromMs) return false; if (toMs !== null && ms > toMs) return false; return true; };
   const noFilter = (fromMs === null && toMs === null);
 
-  const visitStats = {};
+  // One Showroom Visit ID = one visit. The same visit rides along on every lead row
+  // belonging to that customer, so tallying per row counted it once per row —
+  // inflating visits (and Vis%) and deflating WU%. Collapse to one entry per ID
+  // first: rep is first-seen-wins, and Write Up / Trade Appraisal are OR-ed across
+  // the visit's rows so a flag set on any single row still counts exactly once.
+  const visitById = new Map();
   filtered.forEach(r => {
     const vid = (r[H.VISIT_ID] || '').trim(); if (!vid) return;
     if ((r[H.VISIT_RESULT] || '').trim() === 'Deleted') return;
     const ag  = (r[H.ASSIGNED_GROUP] || '').trim(); if (MGR_GROUPS.has(ag)) return;
     const rep = (r[H.SALES_REP]      || '').trim(); if (!rep) return;
     if (!noFilter) { const vStartMs = Date.parse(r[H.VISIT_START] || ''); if (!inRange(vStartMs)) return; }
-    const s   = visitStats[rep] = visitStats[rep] || { visits: 0, write_ups: 0, trades: 0 };
+    const wu = (r[H.WRITE_UP]  || '').trim() === 'Y';
+    const tr = (r[H.TRADE_APP] || '').trim() === 'Y';
+    const v  = visitById.get(vid);
+    if (v) { if (wu) v.wu = true; if (tr) v.tr = true; return; }
+    visitById.set(vid, { rep, wu, tr });
+  });
+  const visitStats = {};
+  visitById.forEach(v => {
+    const s = visitStats[v.rep] = visitStats[v.rep] || { visits: 0, write_ups: 0, trades: 0 };
     s.visits++;
-    if ((r[H.WRITE_UP]  || '').trim() === 'Y') s.write_ups++;
-    if ((r[H.TRADE_APP] || '').trim() === 'Y') s.trades++;
+    if (v.wu) s.write_ups++;
+    if (v.tr) s.trades++;
   });
 
   const classified = dedup.map(r => {
@@ -272,6 +332,9 @@ function recomputeRaw(rows, H, storeId, fromStr, toStr) {
     const validLeads    = inPeriodLeads.filter(c => !BAD_STATUSES.has((c.row[H.LEAD_STATUS] || '').trim()));
     const deliveries    = cr.filter(c => c.inSalePeriod);
     const priorDels     = cr.filter(c => c.inSalePeriod && !c.inLeadPeriod).length;
+    // Subset of deliveries that are sold-but-not-yet-funded. Counted in `delivered`
+    // above; surfaced separately so the at-risk portion of the number is visible.
+    const pendingDels   = deliveries.filter(c => isPendingSold(c.row, H)).length;
     const internet      = validLeads.filter(c => (c.row[H.LEAD_TYPE] || '').trim() === 'Internet');
     const adj = [];
     internet.forEach(c => {
@@ -322,6 +385,7 @@ function recomputeRaw(rows, H, storeId, fromStr, toStr) {
       valid_to_visit_rate: validLeads.length ? vs.visits / validLeads.length : 0,
       trades:              vs.trades,
       prior_period_deliveries: priorDels,
+      pending_deliveries:      pendingDels,
     });
   });
 
@@ -332,6 +396,7 @@ function recomputeRaw(rows, H, storeId, fromStr, toStr) {
     valid_leads:    reps.reduce((s, r) => s + r.valid_leads,    0),
     bad_leads:      reps.reduce((s, r) => s + r.bad_leads,      0),
     delivered:      reps.reduce((s, r) => s + r.delivered,      0),
+    pending_deliveries: reps.reduce((s, r) => s + (r.pending_deliveries || 0), 0),
     conv_pct:       0,
     visits:         reps.reduce((s, r) => s + r.visits,         0),
     write_ups:      reps.reduce((s, r) => s + r.write_ups,      0),
@@ -359,10 +424,9 @@ function recomputeRaw(rows, H, storeId, fromStr, toStr) {
 // ── PII strip for rows blob ───────────────────────────────────────────
 
 // Deterministic, salted hash so dedup matching (same Customer/Email/Phone => same
-// customer) still works on the PII-stripped rows blob used for client-side date-range
-// re-filtering. Salt is fresh per ingestion call, so the same real customer hashes
-// differently in a different month's upload — dedup only needs to match within one
-// period's own rows, never across periods.
+// customer) still works on the sanitised rows blob used for client-side date-range
+// re-filtering. Salt is fresh per ingestion call and is never stored, so the hashes are
+// not reversible; dedup only needs to match within one period's own rows.
 function makeDedupHasher() {
   const salt = Math.random().toString(36).slice(2) + Date.now().toString(36);
   return v => {
@@ -378,22 +442,22 @@ function hashPhoneDigits(hash, raw) {
   return String(n).padStart(10, '0').slice(-10);
 }
 
+// Fail CLOSED: without a header row we cannot tell which columns are safe, so return
+// null and let the caller skip the rows blob rather than persist the file untouched.
 function stripPii(rows, H, hash) {
-  const pii = new Set();
-  if (H.allHeaders) {
-    H.allHeaders.forEach((h, i) => { if (PII_COL_HEADERS.includes(String(h || '').trim())) pii.add(i); });
-  }
-  PII_COL_HEADERS.forEach(name => { if (typeof H[name] === 'number') pii.add(H[name]); });
-  if (!pii.size) return rows;
+  if (!Array.isArray(H.allHeaders) || !H.allHeaders.length) return null;
+  const keep = new Set();
+  H.allHeaders.forEach((h, i) => { if (SCORING_COL_HEADERS.includes(String(h || '').trim())) keep.add(i); });
+  const hdr = H.allHeaders;
   return rows.map(row => {
     const out = row.slice();
-    pii.forEach(i => {
-      if (i < 0 || i >= out.length) return;
+    for (let i = 0; i < out.length; i++) {
+      if (!keep.has(i)) { out[i] = ''; continue; }        // outside the allowlist -> dropped
       if (i === H.CUSTOMER) { const nm = normCust(out[i]); out[i] = nm ? hash(nm) : ''; }
       else if (i === H.EMAIL) { const em = normEmail(out[i]); out[i] = em ? hash(em) + '@h' : ''; }
       else if (i === H.DAY_PHONE || i === H.EVE_PHONE || i === H.CELL_PHONE) { out[i] = hashPhoneDigits(hash, out[i]); }
-      else out[i] = '';
-    });
+      else if (PII_COL_HEADERS.includes(String(hdr[i] || '').trim())) { out[i] = ''; }  // duplicate PII column
+    }
     return out;
   });
 }
@@ -437,14 +501,14 @@ export default async (req) => {
   }
 
   // Derive period from fileName
-  const periodInfo = periodFromFileName(fileName || '');
-  if (!periodInfo) {
+  const period = periodFromFileName(fileName || '');
+  if (!period) {
     return Response.json(
-      { error: `Cannot derive period from fileName "${fileName}". Expected format: store_month_YY.csv` },
+      { error: `Cannot derive period from fileName "${fileName}". Expected store_month_YY.csv or store_DD_MM_YY.csv` },
       { status: 400, headers: CORS }
     );
   }
-  const { period, label } = periodInfo;
+  const label = labelFromPeriod(period);
 
   // Parse CSV
   const parsed = parseMasterCSVv2(csvText);
@@ -483,6 +547,7 @@ export default async (req) => {
 
   try {
     const cleanRows = stripPii(rows, H, makeDedupHasher());
+    if (!cleanRows) throw new Error('row sanitisation failed — refusing to store rows');
     await store.setJSON(`rows_${storeId}_${period}`, {
       rows:       cleanRows,
       H:          serializeH(H),
