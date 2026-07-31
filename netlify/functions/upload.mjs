@@ -10,8 +10,19 @@ const BLOB_STORE   = 'sdash';
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, X-Dashboard-Password',
 };
+
+
+// Every store this dashboard knows about. An authenticated caller can still fat-finger a
+// storeId, and an unvalidated one writes a blob nothing will ever read while polluting the
+// period index that store-periods.mjs builds by listing meta_* keys.
+const VALID_STORES = new Set([
+  'hammond','grand_bay','heflin','calera','huntsville',
+  'hattiesburg','tupelo','breaux_bridge','defuniak','airstream',
+]);
+// "2026-07" from a filename, or the browser's synthetic "upload-<timestamp>" fallback.
+const VALID_PERIOD = /^(\d{4}-\d{2}|upload-\d+)$/;
 
 const PII_COLS = [
   'Customer', 'Email',
@@ -93,9 +104,27 @@ export default async (req) => {
   try { body = await req.json(); }
   catch { return Response.json({ error: 'Invalid JSON body' }, { status: 400, headers: CORS }); }
 
+  // AUTH. Fails CLOSED: with no DASHBOARD_PASSWORD configured this refuses every write
+  // rather than waving them through, which is what `if (expected && supplied !== expected)`
+  // would do if the env var ever went missing on a deploy.
+  const expectedPassword = process.env.DASHBOARD_PASSWORD;
+  if (!expectedPassword) {
+    console.error('DASHBOARD_PASSWORD not set — refusing uploads');
+    return Response.json({ error: 'Server misconfiguration' }, { status: 500, headers: CORS });
+  }
+  if (req.headers.get('x-dashboard-password') !== expectedPassword) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401, headers: CORS });
+  }
+
   const { storeId, period, label, fileName, snapshot, rows, H } = body || {};
   if (!storeId || !period) {
     return Response.json({ error: 'storeId and period are required' }, { status: 400, headers: CORS });
+  }
+  if (!VALID_STORES.has(storeId)) {
+    return Response.json({ error: `Unknown storeId "${storeId}"` }, { status: 400, headers: CORS });
+  }
+  if (!VALID_PERIOD.test(period)) {
+    return Response.json({ error: `Invalid period "${period}" — expected YYYY-MM` }, { status: 400, headers: CORS });
   }
 
   const store = getStore(BLOB_STORE);

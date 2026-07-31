@@ -6,7 +6,7 @@ import { getStore } from '@netlify/blobs';
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Methods': 'GET, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, X-Dashboard-Password',
 };
 
 export default async (req) => {
@@ -24,9 +24,16 @@ export default async (req) => {
   const store = getStore('sdash');
 
   if (req.method === 'DELETE') {
+    // Header, not a query string: query strings land in server logs, proxy logs, browser
+    // history and Referer headers. Fails CLOSED if the env var is missing.
     const expectedPassword = process.env.DASHBOARD_PASSWORD;
-    const suppliedPassword = new URL(req.url).searchParams.get('password');
-    if (expectedPassword && suppliedPassword !== expectedPassword) {
+    if (!expectedPassword) {
+      console.error('DASHBOARD_PASSWORD not set — refusing deletes');
+      return Response.json({ error: 'Server misconfiguration' }, { status: 500, headers: CORS });
+    }
+    const suppliedPassword = req.headers.get('x-dashboard-password')
+      || new URL(req.url).searchParams.get('password');   // legacy callers
+    if (suppliedPassword !== expectedPassword) {
       return Response.json({ error: 'Unauthorized' }, { status: 401, headers: CORS });
     }
     try {

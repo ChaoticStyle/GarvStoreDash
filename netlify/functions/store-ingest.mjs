@@ -8,6 +8,17 @@ import { getStore } from '@netlify/blobs';
 
 const BLOB_STORE = 'sdash';
 
+
+// Every store this dashboard knows about. An authenticated caller can still fat-finger a
+// storeId, and an unvalidated one writes a blob nothing will ever read while polluting the
+// period index that store-periods.mjs builds by listing meta_* keys.
+const VALID_STORES = new Set([
+  'hammond','grand_bay','heflin','calera','huntsville',
+  'hattiesburg','tupelo','breaux_bridge','defuniak','airstream',
+]);
+// "2026-07" from a filename, or the browser's synthetic "upload-<timestamp>" fallback.
+const VALID_PERIOD = /^(\d{4}-\d{2}|upload-\d+)$/;
+
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -498,6 +509,11 @@ export default async (req) => {
   }
   if (!storeId || !csvText) {
     return Response.json({ error: 'storeId and csvText are required' }, { status: 400, headers: CORS });
+  }
+  // Checked after the required-field guard so diagnosePipeline()'s __ping__ probe still
+  // gets its expected 400 rather than a different error.
+  if (!VALID_STORES.has(storeId)) {
+    return Response.json({ error: `Unknown storeId "${storeId}"` }, { status: 400, headers: CORS });
   }
 
   // Derive period from fileName

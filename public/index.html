@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GARV Store Dashboard v1.9.0</title>
+<title>GARV Store Dashboard v1.9.2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -881,14 +881,17 @@ async function serverUpload(storeId,period,label,fileName,snapshot,rows,H){
       for(const k of Object.keys(H)){if(k==='_piiCols')continue;if(typeof H[k]==='number'||k==='allHeaders')Hcopy[k]=H[k];}
       body.rows=rows;body.H=Hcopy;
     }
-    const r=await fetch(`${BACKEND_URL}/api/upload`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    // Uploads are an admin action. The password is already in sessionStorage from the
+    // admin unlock, and travels as a header — never a query string, which would land in
+    // server logs, proxy logs, browser history and Referer.
+    const r=await fetch(`${BACKEND_URL}/api/upload`,{method:'POST',headers:{'Content-Type':'application/json','X-Dashboard-Password':adminPassword()},body:JSON.stringify(body)});
     return r.ok;
   }catch(e){console.error('upload failed',e);return false;}
 }
 async function serverDeletePeriod(id,period){
   try{
     const pw=adminPassword();
-    const res=await fetch(`${BACKEND_URL}/api/store/${id}/period/${encodeURIComponent(period)}?password=${encodeURIComponent(pw)}`,{method:'DELETE'});
+    const res=await fetch(`${BACKEND_URL}/api/store/${id}/period/${encodeURIComponent(period)}`,{method:'DELETE',headers:{'X-Dashboard-Password':pw}});
     return res.status;
   }catch{return null;}
 }
@@ -1054,6 +1057,13 @@ const COL_TIPS={
 };
 const PENDING_TIP='Sold but not yet funded (e.g. &#8220;Sold Pending Finance&#8221;). These ARE counted in Deliveries and Cov%. If the deal funds it stays counted; if it reverts to active, lost or bad it drops off the next time this month refreshes. Closed months stay frozen.';
 const PRIOR_TIP='Deliveries in this window whose lead didn&#8217;t originate here &#8212; carried over from an earlier period, or an extra unit sold to a customer already counted elsewhere.';
+/* Escape anything that reaches innerHTML from stored data. Rep names, file names and
+   period labels all originate in an uploaded payload, and every render path here builds
+   HTML by string concatenation — so an unescaped name like <img src=x onerror=...> would
+   execute. Auth on the write endpoint stops new bad data; this stops anything already
+   stored, or arriving by another route, from running. */
+const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const mEsc=esc;
 const pct=v=>(v*100).toFixed(1)+'%';
 const convCls=v=>v>=.20?'cg':v>=.10?'ca':'cr';
 
@@ -1172,7 +1182,7 @@ function buildPage(){
   const maxDate=rawDates.length?rawDates[rawDates.length-1]:'';
   const filterActive=!isAllPeriods&&(activeDR!=='all'||drFrom||drTo);
   const allOpt=`<option value="__all__"${isAllPeriods?' selected':''}>All Periods (${periods.length})</option>`;
-  const perOptions=allOpt+periods.map(p=>`<option value="${p.period}"${p.period===activePeriod?' selected':''}>${periodLabel(p.period)} · ${p.fileName||p.period}</option>`).join('');
+  const perOptions=allOpt+periods.map(p=>`<option value="${p.period}"${p.period===activePeriod?' selected':''}>${esc(periodLabel(p.period))} · ${esc(p.fileName||p.period)}</option>`).join('');
   const presets=['all','mtd','last30','last7'];
   const pLabels={all:'All Data',mtd:'MTD',last30:'Last 30',last7:'Last 7'};
   const drBtns=presets.map(q=>`<button class="dr-btn${activeDR===q?' active':''}" data-dr="${q}" onclick="setDR('${q}')">${pLabels[q]}</button>`).join('');
@@ -1274,7 +1284,7 @@ function tableHTML(reps,totals){
     const cc=convCls(r.conv_pct);
     const vvr=r.valid_to_visit_rate!=null?r.valid_to_visit_rate:(r.valid_leads?r.visits/r.valid_leads:0);
     return`<tr>
-    <td class="nm">${r.name}</td>
+    <td class="nm">${esc(r.name)}</td>
     <td class="r"><span class="leads-val">${r.total_leads}</span></td>
     <td class="r ${r.bad_leads>0?'cr':'cn'}">${r.bad_leads||'—'}</td>
     <td class="r">${r.valid_leads}</td>
@@ -1460,7 +1470,7 @@ function compareHTML(storeId){
   const subHeaders=selPeriods.flatMap(p=>[thSort(p,'total_leads','Leads'),thSort(p,'delivered','Delivered'),thSort(p,'conv_pct','Conv%')]);
   const tableRows=sortedRepNames.map(name=>{
     const cells=selPeriods.map(p=>{const d=periodData[p];if(!d)return'<td class="r no-data">—</td><td class="r no-data">—</td><td class="r no-data">—</td>';const rep=d.reps.find(r=>r.name===name);if(!rep)return'<td class="r no-data">—</td><td class="r no-data">—</td><td class="r no-data">—</td>';const cc=convCls(rep.conv_pct);return`<td class="r">${rep.total_leads}</td><td class="r">${rep.delivered}</td><td class="r ${cc}">${rep.valid_leads?pct(rep.conv_pct):'—'}</td>`;}).join('');
-    return`<tr><td class="nm">${name}</td>${cells}</tr>`;
+    return`<tr><td class="nm">${esc(name)}</td>${cells}</tr>`;
   }).join('');
   const totalsCells=selPeriods.map(p=>{const d=periodData[p];if(!d)return'<td class="r">—</td><td class="r">—</td><td class="r">—</td>';const cc=convCls(d.totals.conv_pct);return`<td class="r">${d.totals.total_leads}</td><td class="r">${d.totals.delivered}</td><td class="r ${cc}">${d.totals.valid_leads?pct(d.totals.conv_pct):'—'}</td>`;}).join('');
   // Month-over-month cards — one card per consecutive period pair
@@ -1672,7 +1682,6 @@ window.addEventListener('resize',hideTip);
 /* ═══════════════════════════════════════════════════════════════
    METHODOLOGY TAB  (open to all viewers — NOT admin-gated)
 ═══════════════════════════════════════════════════════════════ */
-const mEsc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 // Find any period in this browser that still has row-level data, so the live
 // status diagnostic can show the actual values coming out of VinSolutions.
@@ -1900,7 +1909,7 @@ function populateAdminContent(){
   list.innerHTML=periods.map(p=>`
     <li class="per-item">
       <span class="per-item-label">${periodLabel(p.period)}</span>
-      <span class="per-item-meta">${p.fileName||p.period} · ${p.rep_count||0} reps · ${p.delivered||0} del</span>
+      <span class="per-item-meta">${esc(p.fileName||p.period)} · ${p.rep_count||0} reps · ${p.delivered||0} del</span>
       <button class="per-item-del" onclick="deletePeriod('${curStore}','${p.period}')">Delete</button>
     </li>`).join('');
 }
