@@ -12,6 +12,10 @@
   --ink0:#06090f;--ink1:#0b1119;--ink2:#101820;--ink3:#162030;
   --card:#1b2738;--card2:#1f2e40;
   --rule:#1d2d3e;--rule2:#253648;
+  /* --accent is the brand/chrome colour: wordmark, active tab, primary buttons, focus
+     rings. --gold is now ONLY the amber traffic-light band and warnings, so recolouring
+     the brand can never change what a number means. Keep the two separate. */
+  --accent:#8b5cf6;--accent2:#a78bfa;--a-bg:rgba(139,92,246,.08);--a-bd:rgba(139,92,246,.24);
   --gold:#f5a623;--gold2:#ffbc47;--g-bg:rgba(245,166,35,.07);--g-bd:rgba(245,166,35,.22);
   --grn:#22c55e;--g2-bg:rgba(34,197,94,.07);
   --red:#ef4444;--r-bg:rgba(239,68,68,.07);
@@ -35,7 +39,7 @@ body.booting #page,body.booting .store-rail .s-tab{visibility:hidden}
 /* BOOT LOADER */
 #boot{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--ink0);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:500;opacity:1;transition:opacity .25s ease;pointer-events:none}
 #boot.boot-done{opacity:0}
-.boot-gem{width:34px;height:34px;background:var(--gold);clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);animation:bootPulse 1.4s ease-in-out infinite}
+.boot-gem{width:34px;height:34px;background:var(--accent);clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);animation:bootPulse 1.4s ease-in-out infinite}
 @keyframes bootPulse{0%,100%{opacity:.35;transform:scale(.94)}50%{opacity:1;transform:scale(1.04)}}
 .boot-msg{font-family:var(--disp);font-size:14px;letter-spacing:2px;color:var(--t2);text-transform:uppercase}
 .boot-sub{font-size:10px;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase}
@@ -44,9 +48,9 @@ body.booting #page,body.booting .store-rail .s-tab{visibility:hidden}
 #topbar{position:sticky;top:0;z-index:300;background:rgba(11,17,25,.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--rule)}
 .tb-row1{height:52px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}
 .wm{display:flex;align-items:center;gap:9px;flex-shrink:0}
-.wm-gem{width:18px;height:18px;flex-shrink:0;background:var(--gold);clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%)}
+.wm-gem{width:18px;height:18px;flex-shrink:0;background:var(--accent);clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%)}
 .wm-name{font-family:var(--disp);font-size:17px;letter-spacing:2.5px;line-height:1}
-.wm-name em{color:var(--gold);font-style:normal}
+.wm-name em{color:var(--accent);font-style:normal}
 .wm-sep{width:1px;height:18px;background:var(--rule2);margin:0 2px}
 .wm-sub{font-size:10px;color:var(--t3);letter-spacing:1.5px;text-transform:uppercase}
 #sync-badge{display:none;align-items:center;gap:6px;padding:3px 9px;border-radius:99px;background:var(--p-bg);border:1px solid rgba(139,92,246,.3);font-size:10px;color:var(--pur);letter-spacing:.8px;text-transform:uppercase}
@@ -57,14 +61,14 @@ body.booting #page,body.booting .store-rail .s-tab{visibility:hidden}
 .store-rail::-webkit-scrollbar{display:none}
 .s-tab{display:flex;align-items:center;gap:6px;padding:8px 14px;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;color:var(--t2);font-size:12px;font-weight:500;transition:color .12s,background .12s;user-select:none;flex-shrink:0}
 .s-tab:hover{color:var(--t1);background:rgba(255,255,255,.02)}
-.s-tab.active{color:var(--t0);border-bottom-color:var(--gold)}
+.s-tab.active{color:var(--t0);border-bottom-color:var(--accent)}
 .s-tab.brand{border-left:1px solid var(--rule);margin-left:6px;padding-left:18px;color:#c8d0db;position:relative}
 .s-tab.brand::before{content:'';width:7px;height:7px;border-radius:50%;background:linear-gradient(135deg,#e8edf3 0%,#9aa6b5 100%);flex-shrink:0}
 .s-tab.brand:hover{color:#e8edf3}
 .s-tab.brand.active{color:#f4f7fa;border-bottom-color:#c8d0db}
 .s-dot{width:6px;height:6px;border-radius:50%;background:var(--rule2);flex-shrink:0;transition:all .15s}
 .s-tab.live .s-dot{background:var(--grn);box-shadow:0 0 5px rgba(34,197,94,.5)}
-.s-tab.active .s-dot{background:var(--gold);box-shadow:0 0 5px rgba(245,166,35,.45)}
+.s-tab.active .s-dot{background:var(--accent);box-shadow:0 0 5px rgba(139,92,246,.5)}
 .s-score{font-size:10px;color:var(--t3);font-weight:400;margin-left:1px}
 
 /* BUTTONS */
@@ -72,21 +76,21 @@ body.booting #page,body.booting .store-rail .s-tab{visibility:hidden}
 a.btn{text-decoration:none}
 .btn-ghost{background:transparent;border-color:var(--rule2);color:var(--t1)}
 .btn-ghost:hover{border-color:var(--t2);background:var(--ink2)}
-.btn-gold{background:var(--gold);border-color:var(--gold);color:#060a10;font-weight:700}
-.btn-gold:hover{background:var(--gold2)}
+.btn-accent{background:var(--accent);border-color:var(--accent);color:#0b0614;font-weight:700}
+.btn-accent:hover{background:var(--accent2);border-color:var(--accent2)}
 .btn-sm{padding:4px 10px;font-size:11px}
 .btn-danger{background:var(--r-bg);border-color:rgba(239,68,68,.3);color:var(--red)}
 .btn-danger:hover{background:rgba(239,68,68,.18)}
 .btn-purple{background:rgba(139,92,246,.15);border-color:rgba(139,92,246,.35);color:#a78bfa}
 .btn-purple:hover{background:rgba(139,92,246,.28)}
-.btn-gold-outline{background:rgba(245,166,35,.12);border-color:rgba(245,166,35,.4);color:var(--gold)}
-.btn-gold-outline:hover{background:rgba(245,166,35,.22)}
+.btn-accent-outline{background:rgba(139,92,246,.12);border-color:rgba(139,92,246,.4);color:var(--accent2)}
+.btn-accent-outline:hover{background:rgba(139,92,246,.22)}
 
 /* CONTEXT + CONTROL BARS */
 .ctx-bar{background:var(--ink1);border-bottom:1px solid var(--rule);padding:9px 24px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .ctx-l{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
 .ctx-title{font-family:var(--disp);font-size:21px;letter-spacing:1px;line-height:1}
-.ctx-title em{color:var(--gold);font-style:normal}
+.ctx-title em{color:var(--accent);font-style:normal}
 .ctx-r{display:flex;gap:7px;align-items:center}
 .tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:500;border:1px solid transparent}
 .tag-f{background:var(--r-bg);color:#fc8181;border-color:rgba(239,68,68,.18)}
@@ -95,21 +99,21 @@ a.btn{text-decoration:none}
 .vp-btn{background:transparent;border:none;border-right:1px solid var(--rule2);padding:5px 12px;font-family:var(--font);font-size:11px;font-weight:500;color:var(--t2);cursor:pointer;transition:all .12s;white-space:nowrap}
 .vp-btn:last-child{border-right:none}
 .vp-btn:hover{color:var(--t1);background:rgba(255,255,255,.03)}
-.vp-btn.active{background:var(--g-bg);color:var(--gold)}
+.vp-btn.active{background:var(--a-bg);color:var(--accent2)}
 
 /* CTRL BAR */
-.ctrl-bar{background:var(--ink1);border-bottom:2px solid var(--gold);padding:8px 24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ctrl-bar{background:var(--ink1);border-bottom:2px solid var(--accent);padding:8px 24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .ctrl-lbl{font-size:9px;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;white-space:nowrap;margin-right:2px}
 .per-sel{background:var(--ink3);border:1px solid var(--rule2);color:var(--t0);font-family:var(--font);font-size:12px;padding:4px 9px;border-radius:5px;cursor:pointer;transition:border-color .12s;max-width:260px}
-.per-sel:focus{outline:none;border-color:var(--gold)}
+.per-sel:focus{outline:none;border-color:var(--accent)}
 .per-sel option{background:var(--ink2)}
 .ctrl-sep{width:1px;height:16px;background:var(--rule2);margin:0 4px}
 .dr-btn{display:inline-flex;align-items:center;padding:4px 11px;border-radius:5px;background:var(--ink3);border:1px solid var(--rule2);color:var(--t1);font-size:11px;font-family:var(--font);cursor:pointer;transition:all .12s;white-space:nowrap}
-.dr-btn:hover{border-color:var(--gold);color:var(--gold);background:var(--g-bg)}
-.dr-btn.active{background:var(--g-bg);border-color:var(--g-bd);color:var(--gold);font-weight:600}
+.dr-btn:hover{border-color:var(--accent);color:var(--accent2);background:var(--a-bg)}
+.dr-btn.active{background:var(--a-bg);border-color:var(--a-bd);color:var(--accent2);font-weight:600}
 .dr-dates{display:flex;align-items:center;gap:5px}
 .dr-input{background:var(--ink3);border:1px solid var(--rule2);color:var(--t0);font-family:var(--mono);font-size:11px;padding:4px 8px;border-radius:5px;cursor:pointer;transition:border-color .12s}
-.dr-input:focus{outline:none;border-color:var(--gold)}
+.dr-input:focus{outline:none;border-color:var(--accent)}
 .dr-input::-webkit-calendar-picker-indicator{filter:invert(.4) sepia(1) saturate(3) hue-rotate(10deg);cursor:pointer;opacity:.7}
 .dr-to{font-size:10px;color:var(--t3);padding:0 2px}
 .dr-clear{background:var(--r-bg);border:1px solid rgba(239,68,68,.25);color:var(--red);font-size:11px;font-family:var(--font);cursor:pointer;padding:4px 10px;border-radius:5px;transition:all .12s;line-height:1}
@@ -119,12 +123,12 @@ a.btn{text-decoration:none}
 /* COMPARE CHECKBOXES */
 .cmp-checks{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .cmp-chk{display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;color:var(--t1);user-select:none}
-.cmp-chk input{accent-color:var(--gold);cursor:pointer}
+.cmp-chk input{accent-color:var(--accent);cursor:pointer}
 
 /* KPI STRIP */
 .kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-bottom:20px}
 .kpi{background:var(--card);border:1px solid var(--rule);border-radius:var(--radius2);padding:15px 17px}
-.kpi-v{font-family:var(--disp);font-size:32px;line-height:1;color:var(--gold);margin-bottom:4px}
+.kpi-v{font-family:var(--disp);font-size:32px;line-height:1;color:var(--accent2);margin-bottom:4px}
 .kpi-v.g{color:var(--grn)}.kpi-v.b{color:var(--blu)}.kpi-v.r{color:var(--red)}
 .kpi-l{font-size:10px;color:var(--t2);letter-spacing:1px;text-transform:uppercase}
 .kpi-s{font-size:10px;color:var(--t3);margin-top:2px}
@@ -138,11 +142,11 @@ th{padding:8px 11px;text-align:left;font-size:9px;font-weight:600;letter-spacing
 th.r{text-align:right}
 th.sortable{cursor:pointer;user-select:none}
 th.sortable:hover{color:var(--t1)}
-th.sort-asc{color:var(--gold)}th.sort-asc::after{content:' ▲';font-size:8px}
-th.sort-desc{color:var(--gold)}th.sort-desc::after{content:' ▼';font-size:8px}
+th.sort-asc{color:var(--accent2)}th.sort-asc::after{content:' ▲';font-size:8px}
+th.sort-desc{color:var(--accent2)}th.sort-desc::after{content:' ▼';font-size:8px}
 tbody tr{border-bottom:1px solid var(--rule);transition:background .1s}
 tbody tr:hover{background:rgba(255,255,255,.02)}
-tbody tr.totals-row{background:rgba(245,166,35,.04);border-top:2px solid var(--rule2)}
+tbody tr.totals-row{background:rgba(139,92,246,.05);border-top:2px solid var(--rule2)}
 tbody tr.totals-row td{color:var(--t0);font-weight:600}
 tbody tr:last-child{border-bottom:none}
 td{padding:8px 11px;font-family:var(--mono);font-size:11px;color:var(--t1)}
@@ -173,7 +177,7 @@ th.tip{cursor:help}
 .sub.pend{color:var(--gold)}
 .kpi-s .pend{color:var(--gold)}
 .no-data{font-size:10px;color:var(--t3);font-style:italic;font-family:var(--font)}
-.cmp-period-hd{padding:3px 11px 6px;background:var(--g-bg);border-bottom:1px solid var(--g-bd);font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--gold);text-align:center}
+.cmp-period-hd{padding:3px 11px 6px;background:var(--a-bg);border-bottom:1px solid var(--a-bd);font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent2);text-align:center}
 .cmp-period-hd.alt{background:var(--b-bg);border-bottom-color:rgba(59,130,246,.3);color:var(--blu)}
 td.delta-pos{color:var(--grn);font-weight:600}
 td.delta-neg{color:var(--red);font-weight:600}
@@ -199,7 +203,7 @@ td.delta-eq{color:var(--t3)}
 .empty-b{font-size:13px;color:var(--t2);line-height:1.75;max-width:390px;margin-bottom:20px}
 .empty-steps{display:flex;gap:9px;margin-bottom:20px;flex-wrap:wrap;justify-content:center}
 .estep{background:var(--card);border:1px solid var(--rule);border-radius:var(--radius2);padding:12px 14px;max-width:170px;text-align:left}
-.estep-n{font-family:var(--disp);font-size:18px;color:var(--gold);margin-bottom:3px}
+.estep-n{font-family:var(--disp);font-size:18px;color:var(--accent2);margin-bottom:3px}
 .estep-t{font-size:12px;font-weight:500;color:var(--t0);margin-bottom:2px}
 .estep-d{font-size:11px;color:var(--t2);line-height:1.5}
 
@@ -214,15 +218,15 @@ td.delta-eq{color:var(--t3)}
 .meth-body::-webkit-scrollbar-thumb{background:var(--rule2);border-radius:4px}
 .meth-nav{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--rule)}
 .meth-nav a{font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--t2);background:var(--ink2);border:1px solid var(--rule2);border-radius:5px;padding:4px 9px;text-decoration:none;transition:all .12s}
-.meth-nav a:hover{color:var(--gold);border-color:var(--g-bd);background:var(--g-bg)}
+.meth-nav a:hover{color:var(--accent2);border-color:var(--a-bd);background:var(--a-bg)}
 .meth-sec{margin-bottom:22px;scroll-margin-top:8px}
-.meth-h{font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold);margin-bottom:9px;padding-bottom:5px;border-bottom:1px solid var(--g-bd)}
+.meth-h{font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--accent2);margin-bottom:9px;padding-bottom:5px;border-bottom:1px solid var(--a-bd)}
 .meth-p{font-size:12px;color:var(--t1);line-height:1.75;margin-bottom:11px}
 .meth-p strong{color:var(--t0)}
 .meth-def{display:grid;grid-template-columns:132px 1fr;gap:10px 14px;margin-bottom:11px;align-items:start}
 .meth-term{font-size:11px;font-weight:600;color:var(--t0);line-height:1.5}
 .meth-desc{font-size:11px;color:var(--t1);line-height:1.7}
-.meth-f{font-family:var(--mono);font-size:10.5px;color:var(--gold);background:var(--g-bg);border:1px solid var(--g-bd);border-radius:4px;padding:1px 6px;display:inline-block;margin-top:4px}
+.meth-f{font-family:var(--mono);font-size:10.5px;color:var(--accent2);background:var(--a-bg);border:1px solid var(--a-bd);border-radius:4px;padding:1px 6px;display:inline-block;margin-top:4px}
 .meth-k{font-family:var(--mono);font-size:10.5px;color:var(--t0);background:var(--ink3);border-radius:3px;padding:1px 5px}
 .meth-list{font-size:11px;color:var(--t1);line-height:1.85;padding-left:17px;margin-bottom:11px}
 .meth-note{font-size:11px;color:var(--t1);line-height:1.7;background:var(--b-bg);border-left:2px solid var(--blu);padding:9px 12px;border-radius:0 5px 5px 0;margin-bottom:11px}
@@ -245,7 +249,7 @@ td.delta-eq{color:var(--t3)}
 .modal h2{font-family:var(--disp);font-size:20px;letter-spacing:1.5px;margin-bottom:4px}
 .modal p{font-size:12px;color:var(--t1);line-height:1.7;margin-bottom:14px}
 .drop-z{border:1px dashed var(--rule2);border-radius:var(--radius2);padding:28px;text-align:center;cursor:pointer;transition:all .14s;margin-bottom:12px}
-.drop-z:hover,.drop-z.over{border-color:var(--g-bd);background:var(--g-bg)}
+.drop-z:hover,.drop-z.over{border-color:var(--a-bd);background:var(--a-bg)}
 .dz-ico{font-size:25px;margin-bottom:8px;opacity:.5}
 .dz-main{font-size:13px;font-weight:500;color:var(--t0);margin-bottom:2px}
 .dz-sub{font-size:11px;color:var(--t2)}
@@ -261,7 +265,7 @@ td.delta-eq{color:var(--t3)}
 
 /* ANIMATIONS */
 @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.spin{width:13px;height:13px;border:2px solid var(--rule2);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+.spin{width:13px;height:13px;border:2px solid var(--rule2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* AI COACH */
@@ -273,6 +277,58 @@ td.delta-eq{color:var(--t3)}
 .ai-prompt input::placeholder{color:var(--t3)}
 .ai-think{display:none;align-items:center;gap:9px;padding:10px 14px;background:var(--card);border:1px solid var(--rule);border-radius:var(--radius2);font-size:12px;color:var(--t1);margin-bottom:10px}
 .ai-res{display:none;background:var(--card);border:1px solid var(--rule);border-radius:var(--radius2);padding:14px 16px;font-size:12px;color:var(--t1);line-height:1.8;white-space:pre-wrap;margin-bottom:11px;max-height:320px;overflow-y:auto}
+
+/* ═══════════════ RESPONSIVE ═══════════════
+   Built desktop-first: a fixed 52px top bar with flex-shrink:0 on both the wordmark
+   (308px) and the actions (413px), plus a 10-column white-space:nowrap table. Below
+   ~750px that overflowed the viewport instead of adapting. */
+
+/* Tablet — let the top bar wrap instead of pushing past the screen */
+@media(max-width:900px){
+  .tb-row1{height:auto;min-height:52px;flex-wrap:wrap;padding-top:8px;padding-bottom:8px;gap:8px}
+  .wm,.tb-actions{flex-shrink:1}
+  .tb-actions{flex-wrap:wrap}
+}
+
+/* Phone */
+@media(max-width:600px){
+  .lbl-x{display:none}                       /* "Outfitter Scorecards" -> "Scorecards" */
+  .wm-sep,.wm-sub{display:none}              /* wordmark keeps gem + name only */
+  .tb-actions{gap:5px;width:100%;justify-content:space-between}
+  .btn-sm{padding:6px 9px;font-size:11px}
+  .ctx-title{font-size:18px}
+  .ctrl-bar{padding:8px 14px;gap:6px}
+  .per-sel{flex:1 1 100%;max-width:100%}
+  .dr-dates{flex:1 1 100%}
+  .dr-input{flex:1;min-width:0}
+  .vwrap{padding:14px 14px 40px}
+  .net-grid{grid-template-columns:1fr 1fr}
+  .modal{padding:16px}
+  .ov{padding:10px}
+  .meth-def{grid-template-columns:1fr;gap:3px}   /* term above its description, not beside */
+  .meth-term{color:var(--accent2)}
+  .meth-nav{gap:4px}
+  #tipbox{width:min(250px,calc(100vw - 24px))}
+}
+
+/* Keep the rep name pinned while scrolling a 10-column table sideways.
+   Sticky cells need an opaque background or other columns slide under them; the
+   totals tint is pre-composited over --ink0 so the pinned cell matches its row. */
+@media(max-width:760px){
+  table th:first-child,table td:first-child{position:sticky;left:0;z-index:3;border-right:1px solid var(--rule2)}
+  table th:first-child{background:var(--ink3)}
+  table td:first-child{background:var(--ink0)}
+  tbody tr.totals-row td:first-child{background:#0d0d1b}
+  td.nm{max-width:132px;overflow:hidden;text-overflow:ellipsis}
+}
+
+/* Touch: every control was 21-24px tall, about half the 44px minimum */
+@media(hover:none){
+  .btn-sm,.dr-btn,.vp-btn{min-height:40px}
+  .s-tab{padding-top:12px;padding-bottom:12px}
+  .per-sel,.dr-input{min-height:38px}
+  .mcl{padding:10px;top:8px;right:10px}
+}
 
 @media(max-width:1000px){.kpi-strip{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:760px){.kpi-strip{grid-template-columns:repeat(2,1fr)}}
@@ -286,7 +342,7 @@ td.delta-eq{color:var(--t3)}
 .net-total-l{font-size:9px;color:var(--t3);letter-spacing:.7px;text-transform:uppercase;margin-top:2px}
 .net-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:11px;margin-bottom:18px}
 .net-card{background:var(--card);border:1px solid var(--rule);border-radius:var(--radius2);padding:15px 17px;transition:border-color .12s,background .12s}
-.net-card.has-data{cursor:pointer}.net-card.has-data:hover{border-color:var(--gold);background:var(--g-bg)}
+.net-card.has-data{cursor:pointer}.net-card.has-data:hover{border-color:var(--accent);background:var(--a-bg)}
 .net-card.no-data{opacity:.42;cursor:default}
 .net-card-name{font-family:var(--disp);font-size:17px;letter-spacing:1.5px;line-height:1;margin-bottom:3px}
 .net-card-period{font-size:10px;color:var(--t3);margin-bottom:11px}
@@ -324,9 +380,9 @@ td.delta-eq{color:var(--t3)}
       <div id="sync-badge"><span class="sb-dot"></span>Syncing</div>
     </div>
     <div class="tb-actions">
-      <a class="btn btn-ghost btn-sm" href="https://garvscorev4.netlify.app/" target="_blank" rel="noopener noreferrer" title="Weighted outfitter scorecards — opens in a new tab">&#8599; Outfitter Scorecards</a>
+      <a class="btn btn-ghost btn-sm" href="https://garvscorev4.netlify.app/" target="_blank" rel="noopener noreferrer" title="Weighted outfitter scorecards — opens in a new tab">&#8599; <span class="lbl-x">Outfitter </span>Scorecards</a>
       <button class="btn btn-ghost btn-sm" onclick="openMethodology()" title="How every number on this dashboard is calculated">&#9432; Methodology</button>
-      <button class="btn btn-ai btn-sm" onclick="openAIModal()">&#10022; AI Coach</button>
+      <button class="btn btn-ai btn-sm" onclick="openAIModal()">&#10022; AI<span class="lbl-x"> Coach</span></button>
       <button class="btn btn-ghost btn-sm" onclick="openAdmin()">&#9881; Admin</button>
       <input type="file" id="file-input-hidden" accept=".csv" multiple style="display:none" onchange="handleFiles(this.files)">
     </div>
@@ -354,7 +410,7 @@ td.delta-eq{color:var(--t3)}
     <div class="flist" id="ul-flist"></div>
     <div class="mfoot">
       <button class="btn btn-ghost" onclick="closeOv('ov-upload')">Cancel</button>
-      <button class="btn btn-gold" id="proc-btn" onclick="processUpload()" disabled>Process Files</button>
+      <button class="btn btn-accent" id="proc-btn" onclick="processUpload()" disabled>Process Files</button>
     </div>
   </div>
 </div>
@@ -369,7 +425,7 @@ td.delta-eq{color:var(--t3)}
       <p>Admin actions are password protected. Enter the password to continue.</p>
       <form id="admin-lock-form" style="display:flex;gap:8px">
         <input type="password" id="admin-lock-input" placeholder="Password" autocomplete="off">
-        <button type="submit" class="btn btn-gold btn-sm">Unlock</button>
+        <button type="submit" class="btn btn-accent btn-sm">Unlock</button>
       </form>
       <div id="admin-lock-error" style="color:var(--red);font-size:11px;margin-top:6px"></div>
     </div>
@@ -379,7 +435,7 @@ td.delta-eq{color:var(--t3)}
         <div style="font-size:9px;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px">Manage Periods — <strong id="admin-store-name" style="color:var(--t1);font-weight:600;text-transform:none;letter-spacing:0">—</strong></div>
         <p style="margin-bottom:8px">Deleting removes data from the server for all users.</p>
         <ul class="per-list" id="manage-list"></ul>
-        <button class="btn btn-gold btn-sm" onclick="closeOv('ov-admin');openUpload()">&#8679; Load Another Period</button>
+        <button class="btn btn-accent btn-sm" onclick="closeOv('ov-admin');openUpload()">&#8679; Load Another Period</button>
       </div>
       <div style="height:1px;background:var(--rule2);margin:16px 0"></div>
       <div>
@@ -387,7 +443,7 @@ td.delta-eq{color:var(--t3)}
         <p style="margin-bottom:10px;color:var(--t2)">Force a full re-fetch from the server so all browsers see the same data. Or wipe the local browser cache entirely.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-purple btn-sm" onclick="refreshFromServer()">&#8635; Refresh from Server</button>
-          <button class="btn btn-gold-outline btn-sm" onclick="clearLocalCache()">&#128465; Clear Local Cache</button>
+          <button class="btn btn-accent-outline btn-sm" onclick="clearLocalCache()">&#128465; Clear Local Cache</button>
         </div>
       </div>
       <div style="height:1px;background:var(--rule2);margin:16px 0"></div>
@@ -1135,7 +1191,6 @@ function buildPage(){
       </div>
       <div class="ctx-r">
         <div class="view-pill">${viewBtns}</div>
-        <button class="btn btn-gold btn-sm" onclick="openUpload()">&#8679; Load Period</button>
       </div>
     </div>
     <div class="ctrl-bar">
@@ -1288,7 +1343,7 @@ function buildNetworkPage(pg){
   if(!allPeriods.length){pg.innerHTML=emptyHTML({name:'Network',id:'network',isAirstream:false});return;}
   const allOpt=`<option value="__all__"${np==='__all__'?' selected':''}>All Periods (${allPeriods.length})</option>`;
   const perOptions=allOpt+allPeriods.map(p=>`<option value="${p}"${p===np?' selected':''}>${periodLabel(p)}</option>`).join('');
-  pg.innerHTML=`<div class="ctx-bar"><div class="ctx-l"><div class="ctx-title">Network <em>Overview</em></div><span class="tag tag-c">All Stores</span></div><div class="ctx-r"><button class="btn btn-gold btn-sm" onclick="openUpload()">&#8679; Load Period</button></div></div><div class="ctrl-bar"><span class="ctrl-lbl">Period</span><select class="per-sel" onchange="setNetPeriod(this.value)">${perOptions}</select></div><div class="vwrap" id="content-wrap"></div>`;
+  pg.innerHTML=`<div class="ctx-bar"><div class="ctx-l"><div class="ctx-title">Network <em>Overview</em></div><span class="tag tag-c">All Stores</span></div><div class="ctx-r"></div></div><div class="ctrl-bar"><span class="ctrl-lbl">Period</span><select class="per-sel" onchange="setNetPeriod(this.value)">${perOptions}</select></div><div class="vwrap" id="content-wrap"></div>`;
   renderNetworkContent();
 }
 
@@ -1379,7 +1434,7 @@ function setCmpSort(storeId,period,col){
 }
 function compareHTML(storeId){
   const allPeriods=getStorePeriods(storeId);
-  if(allPeriods.length<2){return`<div class="empty" style="min-height:280px"><div class="empty-ico">📅</div><div class="empty-t">Load Another Period</div><div class="empty-b">Load at least 2 monthly CSV files to compare periods side by side.</div><button class="btn btn-gold" onclick="openUpload()">↑ Load Period Data</button></div>`;}
+  if(allPeriods.length<2){return`<div class="empty" style="min-height:280px"><div class="empty-ico">📅</div><div class="empty-t">Only One Month Available</div><div class="empty-b">Comparing periods needs at least two months of data for this store. Months are imported automatically from VinSolutions, so this view fills in on its own as more months land.</div></div>`;}
   if(!_cmpSelected[storeId])_cmpSelected[storeId]=new Set(allPeriods.slice(0,Math.min(2,allPeriods.length)).map(p=>p.period));
   const sel=_cmpSelected[storeId];
   const selPeriods=allPeriods.filter(p=>sel.has(p.period)).map(p=>p.period).sort();
@@ -1432,7 +1487,7 @@ function toggleCmpPeriod(storeId,period,checked){if(!_cmpSelected[storeId])_cmpS
    EMPTY STATE
 ═══════════════════════════════════════════════════════════════ */
 function emptyHTML(s){
-  return`<div class="empty"><div class="empty-ico">📊</div><div class="empty-t">No Data for ${s?s.name:'This Store'}</div><div class="empty-b">Load a VinSolutions master lead export to see raw activity from every rep — no minimums, no weighted scores, stored on the server for the whole team.</div><div class="empty-steps"><div class="estep"><div class="estep-n">1</div><div class="estep-t">Export CSV</div><div class="estep-d">Master lead report from VinSolutions</div></div><div class="estep"><div class="estep-n">2</div><div class="estep-t">Load Period</div><div class="estep-d">Each month stored on server automatically</div></div><div class="estep"><div class="estep-n">3</div><div class="estep-t">View &amp; Sort</div><div class="estep-d">Table, Summary, or Period Compare</div></div><div class="estep"><div class="estep-n">4</div><div class="estep-t">Any Browser</div><div class="estep-d">Data syncs across all team members</div></div></div><button class="btn btn-gold" onclick="openUpload()">&#8679; Load Period Data</button></div>`;
+  return`<div class="empty"><div class="empty-ico">📊</div><div class="empty-t">No Data Yet for ${s?s.name:'This Store'}</div><div class="empty-b">Lead and showroom data is imported automatically from VinSolutions every hour — nothing needs to be uploaded by hand. If this store is empty, the month has not been imported yet.</div><div class="empty-steps"><div class="estep"><div class="estep-n">1</div><div class="estep-t">VinSolutions</div><div class="estep-d">Master lead report emailed on a schedule</div></div><div class="estep"><div class="estep-n">2</div><div class="estep-t">Imported Hourly</div><div class="estep-d">Picked up and processed automatically</div></div><div class="estep"><div class="estep-n">3</div><div class="estep-t">View &amp; Sort</div><div class="estep-d">Table, Summary, or Period Compare</div></div><div class="estep"><div class="estep-n">4</div><div class="estep-t">Any Browser</div><div class="estep-d">Same data for the whole team</div></div></div><div style="font-size:11px;color:var(--t3)">Still empty after a few hours? Let an admin know.</div></div>`;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1678,7 +1733,7 @@ function methodologyHTML(){
   <div class="meth-h">What this dashboard is</div>
   <p class="meth-p">This is a <strong>store overview</strong> — a straight read of what actually happened at the rooftop this period. Every figure is either a plain count pulled from the CRM export, or one count divided by another. Nothing is scaled, curved or adjusted.</p>
   <p class="meth-p">It is deliberately <strong>not a scorecard</strong>. There is <strong>no weighted score, no composite ranking, no index and no grade</strong> anywhere on this page. Nothing here combines several metrics into one number, so no figure can be quietly moved by how something was weighted.</p>
-  <p class="meth-p">The weighted outfitter scorecards are a <a href="https://garvscorev4.netlify.app/" target="_blank" rel="noopener noreferrer" style="color:var(--gold);text-decoration:underline">separate report</a>. This view is intentionally unweighted so you can see the raw activity sitting underneath any weighted number — if a score looks off over there, this is where you check why.</p>
+  <p class="meth-p">The weighted outfitter scorecards are a <a href="https://garvscorev4.netlify.app/" target="_blank" rel="noopener noreferrer" style="color:var(--accent2);text-decoration:underline">separate report</a>. This view is intentionally unweighted so you can see the raw activity sitting underneath any weighted number — if a score looks off over there, this is where you check why.</p>
   <p class="meth-p">There is also <strong>no lead minimum</strong>. A rep with 4 leads appears on exactly the same terms as a rep with 400. Read percentages on small lead counts with that in mind — one deal moves a small denominator a long way.</p>
   <div class="meth-note">Each month is built from that month’s own CRM export, refreshed hourly. The dashboard never edits your data — it filters, de-duplicates and counts it.</div>
 </div>
