@@ -69,6 +69,7 @@ body.booting #page,body.booting .store-rail .s-tab{visibility:hidden}
 
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:6px 13px;border-radius:var(--radius);font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;border:1px solid transparent;transition:all .12s;white-space:nowrap;line-height:1}
+a.btn{text-decoration:none}
 .btn-ghost{background:transparent;border-color:var(--rule2);color:var(--t1)}
 .btn-ghost:hover{border-color:var(--t2);background:var(--ink2)}
 .btn-gold{background:var(--gold);border-color:var(--gold);color:#060a10;font-weight:700}
@@ -323,6 +324,7 @@ td.delta-eq{color:var(--t3)}
       <div id="sync-badge"><span class="sb-dot"></span>Syncing</div>
     </div>
     <div class="tb-actions">
+      <a class="btn btn-ghost btn-sm" href="https://garvscorev4.netlify.app/" target="_blank" rel="noopener noreferrer" title="Weighted outfitter scorecards — opens in a new tab">&#8599; Outfitter Scorecards</a>
       <button class="btn btn-ghost btn-sm" onclick="openMethodology()" title="How every number on this dashboard is calculated">&#9432; Methodology</button>
       <button class="btn btn-ai btn-sm" onclick="openAIModal()">&#10022; AI Coach</button>
       <button class="btn btn-ghost btn-sm" onclick="openAdmin()">&#9881; Admin</button>
@@ -994,7 +996,7 @@ const COL_TIPS={
   valid_to_visit_rate:'Of the workable leads, the share that actually came into the store &#8212; Visits divided by Valid Leads. Green at 50% and above, amber 25&#8211;50%, red below 25%.',
   writeup_rate:'Of the customers who came in, the share that got written up &#8212; Write-ups divided by Visits. Green at 50% and above, amber 30&#8211;50%, red below 30%.',
 };
-const PENDING_TIP='Sold but not yet funded (e.g. &#8220;Sold Pending Finance&#8221;). These ARE counted in Deliveries and Cov%. If the deal funds it stays counted; if it reverts to active, lost or bad it drops off the next time this month is re-scored. Closed months stay frozen.';
+const PENDING_TIP='Sold but not yet funded (e.g. &#8220;Sold Pending Finance&#8221;). These ARE counted in Deliveries and Cov%. If the deal funds it stays counted; if it reverts to active, lost or bad it drops off the next time this month refreshes. Closed months stay frozen.';
 const PRIOR_TIP='Deliveries in this window whose lead didn&#8217;t originate here &#8212; carried over from an earlier period, or an extra unit sold to a customer already counted elsewhere.';
 const pct=v=>(v*100).toFixed(1)+'%';
 const convCls=v=>v>=.20?'cg':v>=.10?'ca':'cr';
@@ -1127,7 +1129,7 @@ function buildPage(){
   pg.innerHTML=
     `<div class="ctx-bar">
       <div class="ctx-l">
-        <div class="ctx-title">${s.name} <em>${s.isAirstream?'Brand':'Scorecard'}</em></div>
+        <div class="ctx-title">${s.name} <em>${s.isAirstream?'Brand':'Store Overview'}</em></div>
         <span class="tag tag-f">700 Credit &amp; ${s.isAirstream?'non-Airstream':'Airstream'} removed</span>
         <span class="tag tag-c" id="rep-count-tag">— reps</span>
       </div>
@@ -1674,9 +1676,11 @@ function methodologyHTML(){
 
 <div class="meth-sec" id="meth-overview">
   <div class="meth-h">What this dashboard is</div>
-  <p class="meth-p">This is a <strong>raw activity scorecard</strong>, not a ranking engine. There is deliberately <strong>no composite score, no weighting, no index and no grade</strong> — every figure is either a plain count taken straight from the VinSolutions master lead export, or one count divided by another. Nothing is scaled, curved or adjusted.</p>
+  <p class="meth-p">This is a <strong>store overview</strong> — a straight read of what actually happened at the rooftop this period. Every figure is either a plain count pulled from the CRM export, or one count divided by another. Nothing is scaled, curved or adjusted.</p>
+  <p class="meth-p">It is deliberately <strong>not a scorecard</strong>. There is <strong>no weighted score, no composite ranking, no index and no grade</strong> anywhere on this page. Nothing here combines several metrics into one number, so no figure can be quietly moved by how something was weighted.</p>
+  <p class="meth-p">The weighted outfitter scorecards are a <a href="https://garvscorev4.netlify.app/" target="_blank" rel="noopener noreferrer" style="color:var(--gold);text-decoration:underline">separate report</a>. This view is intentionally unweighted so you can see the raw activity sitting underneath any weighted number — if a score looks off over there, this is where you check why.</p>
   <p class="meth-p">There is also <strong>no lead minimum</strong>. A rep with 4 leads appears on exactly the same terms as a rep with 400. Read percentages on small lead counts with that in mind — one deal moves a small denominator a long way.</p>
-  <div class="meth-note">Each month is scored from that month’s own CSV export. The dashboard never edits your data — it filters, de-duplicates and counts it.</div>
+  <div class="meth-note">Each month is built from that month’s own CRM export, refreshed hourly. The dashboard never edits your data — it filters, de-duplicates and counts it.</div>
 </div>
 
 <div class="meth-sec" id="meth-columns">
@@ -1689,7 +1693,7 @@ function methodologyHTML(){
 
   <div class="meth-def"><div class="meth-term">Bad Leads</div><div class="meth-desc">Leads that were never workable in the first place: bad credit, wrong or missing contact details, duplicates, no intent to buy, out of market, already bought somewhere else, or asked not to be contacted.<br><br><strong>These are not held against the rep.</strong> They are shown so you can see how much of the pipeline was junk, then taken back out before any percentage is calculated.</div></div>
 
-  <div class="meth-def"><div class="meth-term">Valid Leads</div><div class="meth-desc">All Leads minus Bad Leads &#8212; the real, workable pipeline.<br><br><strong>This is the number every percentage is measured against.</strong> A rep is judged on what they could actually work, not on junk they were handed.<span class="meth-f">Valid Leads = All Leads &#8722; Bad Leads</span></div></div>
+  <div class="meth-def"><div class="meth-term">Valid Leads</div><div class="meth-desc">All Leads minus Bad Leads &#8212; the real, workable pipeline.<br><br><strong>This is the number every percentage is measured against.</strong> A rep is measured on what they could actually work, not on junk they were handed.<span class="meth-f">Valid Leads = All Leads &#8722; Bad Leads</span></div></div>
 
   <div class="meth-def"><div class="meth-term">Visits</div><div class="meth-desc">Customers who actually came into the store and were logged as a showroom visit.<br><br>Each visit counts <strong>once</strong>, no matter how many lead records it is attached to. Visits logged under a manager or the front desk, and visits marked deleted, are not counted.</div></div>
 
@@ -1711,7 +1715,7 @@ function methodologyHTML(){
 <div class="meth-sec" id="meth-deliveries">
   <div class="meth-h">What counts as a delivery</div>
   <p class="meth-p">A lead counts as delivered when the export marks it <strong>sold</strong>. Nothing else — not an appointment, not a write-up, not a deposit — counts. Two things sit underneath that number and are labelled directly on the cell:</p>
-  <div class="meth-def"><div class="meth-term" style="color:var(--gold)">N pending sold</div><div class="meth-desc"><strong>Sold but not yet funded</strong> — typically <span class="meth-k">Sold Pending Finance</span>. These <strong>do count</strong> in Deliveries and Cov%, and are flagged so the at-risk portion of the number is visible.<br><br>If the deal funds, it simply stays counted. If it falls through and moves to active, lost, bad or any status other than sold, it <strong>drops off (−1)</strong> the next time that month is re-scored. That is why the current month keeps being re-uploaded.</div></div>
+  <div class="meth-def"><div class="meth-term" style="color:var(--gold)">N pending sold</div><div class="meth-desc"><strong>Sold but not yet funded</strong> — typically <span class="meth-k">Sold Pending Finance</span>. These <strong>do count</strong> in Deliveries and Cov%, and are flagged so the at-risk portion of the number is visible.<br><br>If the deal funds, it simply stays counted. If it falls through and moves to active, lost, bad or any status other than sold, it <strong>drops off (−1)</strong> the next time that month refreshes. That is why the current month keeps being re-uploaded.</div></div>
   <div class="meth-def"><div class="meth-term">N prior</div><div class="meth-desc">Deliveries closed in this window whose lead <strong>originated in an earlier month</strong>, or an extra unit sold to a customer already counted once. The sale is credited to the month it closed in.</div></div>
   <div class="meth-warn"><strong>Closed months stay frozen.</strong> Once a month stops being re-uploaded, its numbers are locked at whatever they last showed. A July deal that was pending at July’s close stays in July as pending; if it funds in August it shows up as an August delivery (tagged <em>prior</em>, since the lead came from July). Deliveries are credited to the month they <em>closed</em>, using <span class="meth-k">Lead Last Modified Date</span>.</div>
   <div class="meth-note">Because carry-over and extra-unit sales land in the numerator while the denominator only counts leads that <em>started</em> in the window, <strong>Cov% can exceed 100%</strong> in a light lead month. That is expected, not a bug — the <em>prior</em> tag shows how much of the count came from outside the window.</div>
@@ -1747,8 +1751,8 @@ function methodologyHTML(){
 
 <div class="meth-sec" id="meth-periods">
   <div class="meth-h">Periods, frozen months &amp; date filters</div>
-  <p class="meth-p">Each month is a separate stored snapshot, scored from that month’s CSV. The month a file belongs to comes from its <strong>filename</strong>, not from the data inside it.</p>
-  <p class="meth-p">The <strong>Date</strong> buttons re-score the period live from row-level data. <span class="meth-k">MTD</span>, <span class="meth-k">Last 30</span> and <span class="meth-k">Last 7</span> are measured against the last day of data in the period you are viewing — not against today’s real date — so a historical month isn’t compared against a calendar that has moved on. If a period predates row-level storage, the dashboard says date filtering is unavailable rather than quietly showing you unfiltered numbers under a filtered label.</p>
+  <p class="meth-p">Each month is a separate stored snapshot, built from that month’s CRM export. The month a file belongs to comes from its <strong>filename</strong>, not from the data inside it.</p>
+  <p class="meth-p">The <strong>Date</strong> buttons recalculate the period live from the underlying records. <span class="meth-k">MTD</span>, <span class="meth-k">Last 30</span> and <span class="meth-k">Last 7</span> are measured against the last day of data in the period you are viewing — not against today’s real date — so a historical month isn’t compared against a calendar that has moved on. If a period predates row-level storage, the dashboard says date filtering is unavailable rather than quietly showing you unfiltered numbers under a filtered label.</p>
   <p class="meth-p"><strong>All Periods</strong> sums every stored month. Note that de-duplication happens <em>within</em> a month, so a customer who appears in two different months counts once in each.</p>
   <p class="meth-p"><strong>Month-over-Month</strong> cards compare consecutive periods: leads and deliveries as plain differences, Cov% as a <strong>percentage-point</strong> change.</p>
 </div>
