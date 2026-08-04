@@ -707,13 +707,20 @@ const SCORING_COL_HEADERS=['Customer','Email','Daytime Phone','Day Phone','Cell 
   'Last Attempted Phone Contact','Last Attempted Email Contact','Last Attempted Text Contact Datetime',
   'Sales Rep','Showroom Visit ID','Assigned User - User Group',
   'Visit Result','Write Up','Trade Appraisal'];
+/* Normalised, case-INSENSITIVE allowlist lookup.
+   The resolver that finds the sold-date column already ignores case, and the real
+   export says "Sold Datetime" where our list said "Sold DateTime" - so the column
+   was found and used on the first score, then silently blanked by the row cache,
+   and every date-filtered view fell back to the drifting date while still looking
+   plausible. Matching on a normalised set closes that gap for every column. */
+const ALLOWED_COLS=new Set(SCORING_COL_HEADERS.map(h=>h.toLowerCase()));
 // Fail CLOSED: without a header row we cannot tell which columns are safe, so we refuse
 // to produce rows at all rather than emit the file untouched (the old behaviour).
 function scoringColIndexes(H){
   if(H._keepCols)return H._keepCols;
   if(!Array.isArray(H.allHeaders)||!H.allHeaders.length)return null;
   const keep=new Set();
-  H.allHeaders.forEach((h,i)=>{if(SCORING_COL_HEADERS.includes(String(h||'').trim()))keep.add(i);});
+  H.allHeaders.forEach((h,i)=>{if(ALLOWED_COLS.has(String(h||'').trim().toLowerCase()))keep.add(i);});
   H._keepCols=keep;return keep;
 }
 function makeDedupHasher(){

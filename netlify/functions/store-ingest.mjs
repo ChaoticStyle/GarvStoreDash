@@ -283,6 +283,11 @@ const SCORING_COL_HEADERS = [
   'Sales Rep','Showroom Visit ID','Assigned User - User Group',
   'Visit Result','Write Up','Trade Appraisal',
 ];
+// Normalised, case-INSENSITIVE allowlist lookup. The real export says
+// "Sold Datetime" where our list said "Sold DateTime", so the column was found
+// and used on the first score, then silently blanked by the row cache - every
+// date-filtered view then fell back to the drifting date while looking plausible.
+const ALLOWED_COLS = new Set(SCORING_COL_HEADERS.map(h => h.toLowerCase()));
 
 function recomputeRaw(rows, H, storeId, fromStr, toStr) {
   const isAirstreamTab = storeId === 'airstream';
@@ -485,7 +490,7 @@ function hashPhoneDigits(hash, raw) {
 function stripPii(rows, H, hash) {
   if (!Array.isArray(H.allHeaders) || !H.allHeaders.length) return null;
   const keep = new Set();
-  H.allHeaders.forEach((h, i) => { if (SCORING_COL_HEADERS.includes(String(h || '').trim())) keep.add(i); });
+  H.allHeaders.forEach((h, i) => { if (ALLOWED_COLS.has(String(h || '').trim().toLowerCase())) keep.add(i); });
   const hdr = H.allHeaders;
   return rows.map(row => {
     const out = row.slice();
