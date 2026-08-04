@@ -557,7 +557,7 @@ const SYS_PATTERNS=['your friends at great american rv','yod house agent'];
 const MGR_GROUPS=new Set(['Manager','Reception','Admin']);
 const isSysAccount=name=>{const n=normName(name);return SYS_PATTERNS.some(p=>n.includes(p))};
 const isTrackedRep=(storeId,name)=>{const n=normName(name);if(!n)return false;if(BLACKLIST.has(n))return false;if(isSysAccount(n))return false;return true;};
-const BAD_STATUSES=new Set(['Bad Credit','Bad or no contact information','Dealer test lead','Duplicate lead','No intent to buy','Out of market','Purchased different brand different dealer','Purchased from private party','Purchased same brand different dealer','Requested no further contact']);
+const BAD_STATUSES=new Set(['Bad Credit','Bought from different dealer in the group','Bad or no contact information','Dealer test lead','Duplicate lead','No intent to buy','Out of market','Purchased different brand different dealer','Purchased from private party','Purchased same brand different dealer','Requested no further contact']);
 
 /* ═══════════════════════════════════════════════════════════════
    CSV PARSER
@@ -579,7 +579,7 @@ function parseMasterCSVv2(txt){
   H.LEAD_SOURCE=H['Lead Source'];H.LEAD_TYPE=H['Lead Type'];H.LEAD_SRC_GROUP=H['Lead Source Group'];
   H.LEAD_STATUS=H['Lead Status'];H.LEAD_STATUS_CUSTOM=H['Lead Status Custom'];H.LEAD_STATUS_TYPE=H['Lead Status Type'];
   H.ADJ_RT=H['Adjusted Response Time (Min)'];H.CONTACTED=H['Contacted Indicator'];
-  H.SALES_REP=H['Sales Rep'];H.MAKE=H['Make'];H.LEAD_ORIG=H['Lead Origination Date'];H.LEAD_MOD=H['Lead Last Modified Date'];
+  H.SALES_REP=H['Sales Rep'];H.MAKE=H['Make'];H.LEAD_ORIG=H['Lead Origination Date'];H.LEAD_MOD=H['Lead Last Modified Date'];H.SOLD_DATE=resolveSoldDateCol(H);
   H.CUSTOMER=H['Customer'];H.DEALER=H['Dealer'];
   H.LAST_EMAIL=H['Last Attempted Email Contact'];H.LAST_PHONE=H['Last Attempted Phone Contact'];H.LAST_TEXT=H['Last Attempted Text Contact Datetime'];
   H.EMAIL=H['Email'];H.DAY_PHONE=H['Daytime Phone'];H.EVE_PHONE=H['Evening Phone'];H.CELL_PHONE=H['Cell Phone'];
@@ -608,6 +608,33 @@ function normCust(c){return String(c||'').trim().toLowerCase().replace(/\s+/g,' 
    being re-uploaded, and why closed months stay frozen at whatever they last showed.
    Add store-specific wording to this list as it turns up in the diagnostic on the
    Methodology tab. */
+/* == SALE DATE ================================================================
+   Deliveries were dated by Lead Last Modified Date, which is NOT a close date -
+   it is the last time anyone touched the record. Measured on two pulls of the
+   same month: 19 of 72 July deliveries had that date changed, every one moving
+   into August (18 onto one day, a month-end batch), so re-pulling July dropped
+   it from 72 deliveries to 53.
+   A real sold date fixes it. The export does not carry one yet and the exact
+   header is unknown, so match a list of plausible names and fall back to the old
+   behaviour when none is present - today the fallback is what runs.
+   Keep SOLD_DATE_HEADERS identical in netlify/functions/store-ingest.mjs. */
+const SOLD_DATE_HEADERS=['Sold Date','Sold Date/Time','Sold DateTime','Sold Date Time',
+  'Delivery Date','Delivered Date','Sale Date','Contract Date','Deal Date'];
+function resolveSoldDateCol(H){
+  if(!Array.isArray(H.allHeaders))return undefined;
+  const want=SOLD_DATE_HEADERS.map(h=>h.toLowerCase());
+  for(let i=0;i<H.allHeaders.length;i++){
+    if(want.includes(String(H.allHeaders[i]||'').trim().toLowerCase()))return i;
+  }
+  return undefined;
+}
+/* Sold date if present, else last-modified, else origination. */
+function saleDateMsOf(r,H){
+  if(H.SOLD_DATE!==undefined){const s=Date.parse(r[H.SOLD_DATE]||'');if(!isNaN(s))return s;}
+  const m=Date.parse(r[H.LEAD_MOD]||'');
+  if(!isNaN(m))return m;
+  return Date.parse(r[H.LEAD_ORIG]||'');
+}
 const PENDING_SOLD_PATTERNS=['sold pending','pending sold','pending finance','pending financing','pending funding','pending lender','awaiting finance','awaiting funding'];
 const matchesPendingSold=v=>{const s=String(v||'').trim().toLowerCase().replace(/[_\-\/]+/g,' ').replace(/\s+/g,' ');return s?PENDING_SOLD_PATTERNS.some(p=>s.includes(p)):false;};
 function isPendingSold(r,H){return matchesPendingSold(r[H.LEAD_STATUS])||matchesPendingSold(r[H.LEAD_STATUS_CUSTOM])||matchesPendingSold(r[H.LEAD_STATUS_TYPE]);}
@@ -671,19 +698,29 @@ const PII_COL_HEADERS=['Customer','Email','Daytime Phone','Day Phone','Cell Phon
    public/index.html, store-ingest.mjs and upload.mjs. */
 const SCORING_COL_HEADERS=['Customer','Email','Daytime Phone','Day Phone','Cell Phone','Evening Phone',
   'Stock Number','Dealer','Lead Source','Lead Source Group','Lead Type','Make',
+  /* Without these the row cache blanks the sold date and every date-filtered
+     view silently reverts to the drifting Lead Last Modified Date. */
+  ...SOLD_DATE_HEADERS,
   'Lead Status','Lead Status Custom','Lead Status Type',
   'Lead Origination Date','Lead Last Modified Date','Visit Start Date',
   'Adjusted Response Time (Min)','Contacted Indicator',
   'Last Attempted Phone Contact','Last Attempted Email Contact','Last Attempted Text Contact Datetime',
   'Sales Rep','Showroom Visit ID','Assigned User - User Group',
   'Visit Result','Write Up','Trade Appraisal'];
+/* Normalised, case-INSENSITIVE allowlist lookup.
+   The resolver that finds the sold-date column already ignores case, and the real
+   export says "Sold Datetime" where our list said "Sold DateTime" - so the column
+   was found and used on the first score, then silently blanked by the row cache,
+   and every date-filtered view fell back to the drifting date while still looking
+   plausible. Matching on a normalised set closes that gap for every column. */
+const ALLOWED_COLS=new Set(SCORING_COL_HEADERS.map(h=>h.toLowerCase()));
 // Fail CLOSED: without a header row we cannot tell which columns are safe, so we refuse
 // to produce rows at all rather than emit the file untouched (the old behaviour).
 function scoringColIndexes(H){
   if(H._keepCols)return H._keepCols;
   if(!Array.isArray(H.allHeaders)||!H.allHeaders.length)return null;
   const keep=new Set();
-  H.allHeaders.forEach((h,i)=>{if(SCORING_COL_HEADERS.includes(String(h||'').trim()))keep.add(i);});
+  H.allHeaders.forEach((h,i)=>{if(ALLOWED_COLS.has(String(h||'').trim().toLowerCase()))keep.add(i);});
   H._keepCols=keep;return keep;
 }
 function makeDedupHasher(){
@@ -765,7 +802,7 @@ function recomputeRaw(rows,H,storeId,fromStr,toStr){
   const classified=dedup.map(r=>{
     const origMs=Date.parse(r[H.LEAD_ORIG]||'');const modMs=Date.parse(r[H.LEAD_MOD]||'');const sold=isDelivered(r,H);
     const inLeadPeriod=noFilter?true:(isNaN(origMs)?true:inRange(origMs));
-    const saleDateMs=!isNaN(modMs)?modMs:origMs;
+    const saleDateMs=saleDateMsOf(r,H);
     const inSalePeriod=sold&&(noFilter?true:inRange(saleDateMs));
     return{row:r,sold,inLeadPeriod,inSalePeriod};
   });
@@ -774,7 +811,7 @@ function recomputeRaw(rows,H,storeId,fromStr,toStr){
   // Inject extra deliveries (same customer, different sold stock number)
   extraSales.forEach(r=>{
     const modMs2=Date.parse(r[H.LEAD_MOD]||'');const origMs2=Date.parse(r[H.LEAD_ORIG]||'');
-    const saleDateMs=!isNaN(modMs2)?modMs2:origMs2;
+    const saleDateMs=saleDateMsOf(r,H);
     const inSalePeriod=noFilter?true:(!isNaN(saleDateMs)&&inRange(saleDateMs));
     if(!inSalePeriod)return;
     const rep=(r[H.SALES_REP]||'').trim();if(!rep)return;

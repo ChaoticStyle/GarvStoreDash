@@ -651,6 +651,64 @@ untouched, which is what the old code did.
 12. ✅ **`Purchased same brand different dealer` added to `BAD_STATUSES`** — it was
    the only "purchased elsewhere" status not disqualifying a lead.
 
+### Deliveries are dated by Sold Datetime, not Last Modified
+
+Deliveries used to be dated by `Lead Last Modified Date`. That is not a close
+date - it is the last time anyone touched the record - so it **drifts**, and a
+month's delivery count shrank every time the export was re-pulled.
+
+Measured on two pulls of Hammond July 2026, ~7/31 and ~8/4:
+
+| window | pulled ~7/31 | pulled ~8/4 |
+|---|---|---|
+| calendar July deliveries | 72 | 53 |
+
+All 72 deliveries were present in both pulls. **19 of them had their
+`Lead Last Modified Date` changed**, every one moving July to August, 18 landing
+on exactly 2026-08-03 - a month-end batch touching the records.
+
+VinSolutions now supplies a **`Sold Datetime`** column, and deliveries are dated
+by it:
+
+```
+sale date = Sold Datetime -> Lead Last Modified Date -> Lead Origination Date
+```
+
+**Confirmed on the exact deals that drifted.** Re-pulled with the new column,
+all **19 of 19** carry a July sold date - none blank, none in August. Examples:
+last modified 2026-08-03, sold 2026-07-04; modified 2026-08-03, sold 2026-07-22.
+
+**It also removes stale sales that were never this month's.** July's count settles
+at **71**, not 72: one Hammond deal sold **2022-06-17** had its record touched on
+2026-07-25, so the old rule counted a four-year-old sale as a July delivery.
+Excluding just that deal, both rules agree at 71 exactly - so 71 is the correct
+figure and the old 72 was inflated. Tupelo showed the same pattern with a
+2018 dealer-import sale.
+
+**Coverage is complete, including history.** Every Sold row carries a sold date
+and no non-Sold row does, across four real exports:
+
+| export | Sold rows | with a sold date | Sold-without-date | date-without-Sold |
+|---|---|---|---|---|
+| Hammond July | 81 | 81 | 0 | 0 |
+| Hammond August | 9 | 9 | 0 | 0 |
+| Tupelo July | 50 | 50 | 0 | 0 |
+| Tupelo August | 2 | 2 | 0 | 0 |
+
+Sold dates are backfilled, not forward-only - Hammond July carries one from 2022
+- so historic months are dated correctly too. Pending Finance rows carry one as
+well, so they are unaffected by the fallback.
+
+The header is matched **case-insensitively** against a list of plausible names,
+and the whole PII allowlist now matches the same way. The real column is spelled
+`Sold Datetime`; the allowlist said `Sold DateTime`, and a case-sensitive match
+meant the column scored correctly on upload and was then blanked by the row
+cache - right on first load, wrong the moment anyone touched the date filter.
+
+**This still holds:** pull each month once, shortly after it closes. The sold
+date removes the drift, but a re-pull can still differ if deals are added,
+reversed or reclassified after the fact.
+
 ### Accepted as intended
 
 4. ⬜ **Cov% > 100% is reachable** (§6) — accepted. Deliveries deliberately

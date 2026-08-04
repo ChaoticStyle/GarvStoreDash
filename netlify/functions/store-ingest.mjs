@@ -116,7 +116,8 @@ const isTrackedRep  = (storeId, name) => {
   return true;
 };
 const BAD_STATUSES = new Set([
-  'Bad Credit','Bad or no contact information','Dealer test lead','Duplicate lead',
+  'Bad Credit','Bought from different dealer in the group',
+  'Bad or no contact information','Dealer test lead','Duplicate lead',
   'No intent to buy','Out of market','Purchased different brand different dealer',
   'Purchased from private party','Purchased same brand different dealer','Requested no further contact',
 ]);
@@ -158,6 +159,7 @@ function parseMasterCSVv2(txt) {
   H.MAKE              = H['Make'];
   H.LEAD_ORIG         = H['Lead Origination Date'];
   H.LEAD_MOD          = H['Lead Last Modified Date'];
+  H.SOLD_DATE         = resolveSoldDateCol(H);
   H.CUSTOMER          = H['Customer'];
   H.DEALER            = H['Dealer'];
   H.LAST_EMAIL        = H['Last Attempted Email Contact'];
@@ -246,9 +248,35 @@ const PII_COL_HEADERS = ['Customer','Email','Daytime Phone','Day Phone','Cell Ph
 // nothing outside this list can affect any number. Everything else in the export is
 // blanked — VIN, Total Gross, Total Sale Price, Visit Notes, employee-name columns.
 // Keep in sync with public/index.html and upload.mjs.
+// ── Sale date ───────────────────────────────────────────
+// Lead Last Modified Date is NOT a close date - it is the last time the record was
+// touched, and it drifts. On two pulls of the same month, 19 of 72 July deliveries
+// moved into August, dropping July from 72 to 53. A real sold date fixes it; the
+// export has none yet and the header name is unknown, so match a list and fall back.
+// Keep this list identical to public/index.html.
+const SOLD_DATE_HEADERS = ['Sold Date','Sold Date/Time','Sold DateTime','Sold Date Time',
+  'Delivery Date','Delivered Date','Sale Date','Contract Date','Deal Date'];
+function resolveSoldDateCol(H){
+  if (!Array.isArray(H.allHeaders)) return undefined;
+  const want = SOLD_DATE_HEADERS.map(h => h.toLowerCase());
+  for (let i = 0; i < H.allHeaders.length; i++){
+    if (want.includes(String(H.allHeaders[i] || '').trim().toLowerCase())) return i;
+  }
+  return undefined;
+}
+function saleDateMsOf(r, H){
+  if (H.SOLD_DATE !== undefined){ const s = Date.parse(r[H.SOLD_DATE] || ''); if (!isNaN(s)) return s; }
+  const m = Date.parse(r[H.LEAD_MOD] || '');
+  if (!isNaN(m)) return m;
+  return Date.parse(r[H.LEAD_ORIG] || '');
+}
+
 const SCORING_COL_HEADERS = [
   'Customer','Email','Daytime Phone','Day Phone','Cell Phone','Evening Phone',
   'Stock Number','Dealer','Lead Source','Lead Source Group','Lead Type','Make',
+  // Without these the row cache blanks the sold date and every date-filtered view
+  // silently reverts to the drifting Lead Last Modified Date.
+  ...SOLD_DATE_HEADERS,
   'Lead Status','Lead Status Custom','Lead Status Type',
   'Lead Origination Date','Lead Last Modified Date','Visit Start Date',
   'Adjusted Response Time (Min)','Contacted Indicator',
@@ -256,6 +284,11 @@ const SCORING_COL_HEADERS = [
   'Sales Rep','Showroom Visit ID','Assigned User - User Group',
   'Visit Result','Write Up','Trade Appraisal',
 ];
+// Normalised, case-INSENSITIVE allowlist lookup. The real export says
+// "Sold Datetime" where our list said "Sold DateTime", so the column was found
+// and used on the first score, then silently blanked by the row cache - every
+// date-filtered view then fell back to the drifting date while looking plausible.
+const ALLOWED_COLS = new Set(SCORING_COL_HEADERS.map(h => h.toLowerCase()));
 
 function recomputeRaw(rows, H, storeId, fromStr, toStr) {
   const isAirstreamTab = storeId === 'airstream';
@@ -317,7 +350,7 @@ function recomputeRaw(rows, H, storeId, fromStr, toStr) {
     const modMs  = Date.parse(r[H.LEAD_MOD]  || '');
     const sold   = isDelivered(r, H);
     const inLeadPeriod = noFilter ? true : (isNaN(origMs) ? true : inRange(origMs));
-    const saleDateMs   = !isNaN(modMs) ? modMs : origMs;
+    const saleDateMs   = saleDateMsOf(r, H);
     const inSalePeriod = sold && (noFilter ? true : inRange(saleDateMs));
     return { row: r, sold, inLeadPeriod, inSalePeriod };
   });
@@ -329,7 +362,7 @@ function recomputeRaw(rows, H, storeId, fromStr, toStr) {
   extraSales.forEach(r => {
     const modMs2    = Date.parse(r[H.LEAD_MOD]  || '');
     const origMs2   = Date.parse(r[H.LEAD_ORIG] || '');
-    const saleDateMs = !isNaN(modMs2) ? modMs2 : origMs2;
+    const saleDateMs = saleDateMsOf(r, H);
     const inSalePeriod = noFilter ? true : (!isNaN(saleDateMs) && inRange(saleDateMs));
     if (!inSalePeriod) return;
     const rep = (r[H.SALES_REP] || '').trim(); if (!rep) return;
@@ -458,7 +491,7 @@ function hashPhoneDigits(hash, raw) {
 function stripPii(rows, H, hash) {
   if (!Array.isArray(H.allHeaders) || !H.allHeaders.length) return null;
   const keep = new Set();
-  H.allHeaders.forEach((h, i) => { if (SCORING_COL_HEADERS.includes(String(h || '').trim())) keep.add(i); });
+  H.allHeaders.forEach((h, i) => { if (ALLOWED_COLS.has(String(h || '').trim().toLowerCase())) keep.add(i); });
   const hdr = H.allHeaders;
   return rows.map(row => {
     const out = row.slice();
