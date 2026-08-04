@@ -116,7 +116,8 @@ const isTrackedRep  = (storeId, name) => {
   return true;
 };
 const BAD_STATUSES = new Set([
-  'Bad Credit','Bad or no contact information','Dealer test lead','Duplicate lead',
+  'Bad Credit','Bought from different dealer in the group',
+  'Bad or no contact information','Dealer test lead','Duplicate lead',
   'No intent to buy','Out of market','Purchased different brand different dealer',
   'Purchased from private party','Purchased same brand different dealer','Requested no further contact',
 ]);

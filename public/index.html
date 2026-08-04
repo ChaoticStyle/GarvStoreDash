@@ -557,7 +557,7 @@ const SYS_PATTERNS=['your friends at great american rv','yod house agent'];
 const MGR_GROUPS=new Set(['Manager','Reception','Admin']);
 const isSysAccount=name=>{const n=normName(name);return SYS_PATTERNS.some(p=>n.includes(p))};
 const isTrackedRep=(storeId,name)=>{const n=normName(name);if(!n)return false;if(BLACKLIST.has(n))return false;if(isSysAccount(n))return false;return true;};
-const BAD_STATUSES=new Set(['Bad Credit','Bad or no contact information','Dealer test lead','Duplicate lead','No intent to buy','Out of market','Purchased different brand different dealer','Purchased from private party','Purchased same brand different dealer','Requested no further contact']);
+const BAD_STATUSES=new Set(['Bad Credit','Bought from different dealer in the group','Bad or no contact information','Dealer test lead','Duplicate lead','No intent to buy','Out of market','Purchased different brand different dealer','Purchased from private party','Purchased same brand different dealer','Requested no further contact']);
 
 /* ═══════════════════════════════════════════════════════════════
    CSV PARSER
